@@ -20,13 +20,20 @@ const captainSchema = new mongoose.Schema({
         enum: ["captain"],
         default: "captain",
         required: true
+    },
+    verified: {
+        type: Boolean,
+        default: false
     }
 });
 
-captainSchema.methods.genrateAcessToken = function(isNewUser = false) {
+captainSchema.methods.genrateAcessToken = function(isNewUser = false, sessionId) {
     const payload = { _id: this._id, role: this.role };
     if (isNewUser) {
         payload.isNewUser = true;
+    }
+    if (sessionId) {
+        payload.sessionId = sessionId;
     }
     const acessToken = jwt.sign(payload, config.JWT_ACCESS_TOKEN_SECRET, { expiresIn: config.JWT_ACCESS_TOKEN_EXPIRY });
     return acessToken;

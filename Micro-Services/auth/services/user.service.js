@@ -39,13 +39,56 @@ module.exports.createUser = async ({ email, password, role, firstName, lastName 
     await session.endSession();
   }
 };
+module.exports.updateUser = async ({ email, password, firstName, lastName }) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const user = await User.findOne({ email }).session(session);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.verified) {
+      throw new Error("User already verified");
+    }
+
+    // update fields
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (password) user.password = password;
+
+    await user.save({ session });
+
+    // notify user-service via outbox
+    await Outbox.create([{
+      eventType: "USER_UPDATED",
+      payload: {
+        eventId: new mongoose.Types.ObjectId(),
+        userId: user._id,
+        email: user.email,
+        firstName,
+        lastName
+      }
+    }], { session });
+
+    await session.commitTransaction();
+    return user;
+
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
+  }
+};
 module.exports.createSession = async ({user,refreshTokenHash,ip,userAgent}) =>{
-  if(!user || !refreshTokenHash || !ip || !userAgent){
+  if(!user || !ip || !userAgent){
     throw new Error("Missing required fields for session creation")
   }
   const session = await sessionModel.create({
     user:user._id,
-    refreshTokenHash,
     ip,
     userAgent
   });

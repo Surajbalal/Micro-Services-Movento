@@ -6,6 +6,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useContext } from 'react';
 import { UserDataContext } from '../Context/UserContext';
+import axiosInstance from '../api/axiosInstance';
 function UserLogin() {
   const [email, setEmail] = useState('');
   const [password,setPassword] = useState('');
@@ -21,7 +22,7 @@ function UserLogin() {
      }
      
      try {
-       const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/users/login`,user);
+       const response = await axiosInstance.post(`/users/login`,user);
        if(response.status == 200){
         const data = response.data;
         setUser(data.user);

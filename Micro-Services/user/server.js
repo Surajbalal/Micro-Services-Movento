@@ -1,8 +1,8 @@
 require('dotenv').config();
-const port = process.env.PORT;
+const config = require('./config/config');
 const http = require('http');
 const app = require('./app');
-const connect = require('./db/db');
+const connect = require('./config/db');
 const { initializeSocket } = require('./socket');
 const { connectRabbitMQ, subscribeToQueue } = require('./services/rabbit');
 
@@ -23,12 +23,13 @@ async function bootstrap() {
     await subscribeToQueue("get-user");
     await subscribeToQueue("update-user");
     await subscribeToQueue("USER_CREATED");
+    await subscribeToQueue("USER_UPDATED");
     await subscribeToQueue("new-ride", (data) => {
       console.log("Received:", data);
     });
 
-    server.listen(port, () => {
-      console.log(`User services is running on port ${port}`);
+    server.listen(config.PORT, () => {
+      console.log(`User services is running on port ${config.PORT}`);
     });
   } catch (error) {
      console.error("Startup failed:", error);

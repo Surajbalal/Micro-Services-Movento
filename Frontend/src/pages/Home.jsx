@@ -15,6 +15,7 @@ import { SocketContext } from "../Context/SocketContext";
 import { Socket } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
 import LiveTracking from "../Components/LiveTracking";
+import axiosInstance from "../api/axiosInstance";
 
 function Home() {
   const [pickup, setpickup] = useState("");
@@ -84,8 +85,8 @@ socket.on('ride-started', (ride) => {
   const getfare = async () => {
     try {
     
-      const response = await axios.get(
-        `${import.meta.env.VITE_BASE_URL}/rides/get-fare`,
+      const response = await axiosInstance.get(
+        `/rides/get-fare`,
         {
           params: { pickup: pickup, destination: destination },
           headers: {

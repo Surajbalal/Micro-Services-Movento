@@ -16,4 +16,5 @@ app.use(cors({
 
 app.use('/users',userRouter);
 app.use('/captains',captainRouter);
+app.use('/.well-known',require('./routes/jwks.routes'));
 module.exports = app;

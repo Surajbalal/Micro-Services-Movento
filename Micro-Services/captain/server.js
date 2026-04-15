@@ -1,13 +1,13 @@
 const express = require("express");
 require('dotenv').config();
-const port = process.env.PORT
 const http = require("http");
 const app = require("./app");
-const connect = require('./db/db');
+const connect = require('./config/db');
 const { connectRabbitMQ, subscribeToQueue } = require('./services/rabbit');
 
 
 const { initializeSocket } = require('./socket');
+const config = require("./config/config");
 
 const server = http.createServer(app);
 
@@ -33,8 +33,8 @@ async function bootstrap() {
     await subscribeToQueue("captain-update");
     await subscribeToQueue("CAPTAIN_CREATED");
 
-    server.listen(port, () => {
-      console.log(`Captain services is running on port ${port}`);
+    server.listen(config.PORT, () => {
+      console.log(`Captain services is running on port ${config.PORT}`);
     });
   } catch (error) {
      console.error("Startup failed:", error);

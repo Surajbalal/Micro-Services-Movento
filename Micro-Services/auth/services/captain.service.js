@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const Captain = require("../models/captain.model");
 const Outbox = require("../models/outbox.model");
+const sessionModel = require("../models/session.model");
+const otpModel = require("../models/otp.model");
 
 module.exports.createCaptain = async ({ email, password, role, firstName, lastName, vehicle }) => {
   const session = await mongoose.startSession();
@@ -35,4 +37,29 @@ module.exports.createCaptain = async ({ email, password, role, firstName, lastNa
   } finally {
     await session.endSession();
   }
+};
+
+module.exports.createSession = async ({ user, refreshTokenHash, ip, userAgent }) => {
+  if (!user || !refreshTokenHash || !ip || !userAgent) {
+    throw new Error("Missing required fields for session creation");
+  }
+  const session = await sessionModel.create({
+    user: user._id,
+    refreshTokenHash,
+    ip,
+    userAgent
+  });
+  return session;
+};
+
+module.exports.createOtp = async ({ email, otpHash, user }) => {
+  if (!email || !otpHash || !user) {
+    throw new Error("Missing required fields for otp creation");
+  }
+  const otp = await otpModel.create({
+    email,
+    otpHash,
+    user
+  });
+  return otp;
 };
