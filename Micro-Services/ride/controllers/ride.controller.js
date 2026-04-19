@@ -4,22 +4,26 @@ const mapService = require("../services/maps.service");
 const rideModel = require('../models/ride.model')
 const { sendMessageToSocketId } = require("../socket");
 const { publishToQueue } = require("../services/rabbit");
+const asyncHandler = require("../utils/asyncHandler");
 
-module.exports.createRide = async (req, res) => {
-  console.log("helooooooooo caled");
+module.exports.createRide = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    throw new AppError("Validation failed", "VALIDATION_ERROR", 400);
   }
-
-  try {
     const { pickup, destination, vehicleType } = req.body;
 
     const pickupCoordinates = await mapService.getAddressCoordinates(pickup);
     const destinationCoordinates = await mapService.getAddressCoordinates(destination);
     const distanceTime = await mapService.getDistanceTime(pickup,destination)
-    const findCaptainInRadius = await mapService.getCaptainInTheRadius(pickupCoordinates.lat,pickupCoordinates.lng,10);  
+    // const findCaptainInRadius = await mapService.getCaptainInTheRadius(pickupCoordinates.lat,pickupCoordinates.lng,10); 
+    const findCaptainInRadius = await rideService.getCaptainInTheRadius(pickupCoordinates.lat,pickupCoordinates.lng)
 
+//     if(distanceTime.distance.value == 0){
+//       return res.status(400).json({
+//   message: "Pickup and destination cannot be the same. Please choose different locations."
+// });
+    // }
    
 // console.log("distanceTime",distanceTime);
     const ride = await rideService.create({
@@ -68,28 +72,21 @@ destination: {
 
    
     return res.status(201).json(ride);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-module.exports.getfare = async (req, res) => {
-     try {
+});
+module.exports.getfare = asyncHandler(async (req, res) => {
   const  errors  = validationResult(req);
-  if (!errors.isEmpty) {
-    return res.status(400).json({ errors: errors.array() });
+  if (!errors.isEmpty()) {
+    throw new AppError("Validation failed", "VALIDATION_ERROR", 400);
   }
 
   const { pickup, destination } = req.query;
 console.log("inside controller",pickup,destination)
+
  
     const fare = await rideService.getFare(pickup, destination);
     return res.status(200).json(fare);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
+  
+});
 module.exports.confirmRide = async (req,res) =>{
   const errors = validationResult(req);
   if(!errors.isEmpty()){
@@ -102,7 +99,8 @@ module.exports.confirmRide = async (req,res) =>{
   try {
     console.log("satrt")
     const ride = await rideService.confirmRide(rideId,captainId);
-    console.log("this is ride details",ride); 
+    // console.log("this is ride details",ride); 
+    console.log("this is ride details",ride.user.socketId); 
     sendMessageToSocketId(ride.user.socketId,
       'ride-confirm', 
        ride

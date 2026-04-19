@@ -9,8 +9,7 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 
-app.use(cors({ origin: true, credentials: true }));
-
+// CORS is handled by Nginx gateway — no CORS headers here to avoid duplicates
 app.use('/' ,userRoutes);
 
 

@@ -3,7 +3,10 @@ const { sendMessageToSocketId } = require('../socket');
 const mapService = require('./maps.service');
 const crypto = require('crypto');
 const { publishToQueue } = require('./rabbit');
+const AppError = require('../utils/appError');
 
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+// 
 module.exports.generateOtp = () => {
   return crypto.randomInt(100000, 1000000).toString();
 };
@@ -12,9 +15,16 @@ module.exports.getFare = async (pickup, destination) => {
   if (!pickup || !destination) {
     throw new Error("Pickup and destination are required");
   }
-
+ 
   const destinationTime = await mapService.getDistanceTime(pickup, destination);
 console.log(destinationTime);
+    if(destinationTime.distance.value == 0){
+      throw new AppError(
+      "Pickup and destination must be different locations",
+      "SAME_LOCATION",
+      400
+    );
+    }
   const distanceInKm = destinationTime.distance.value / 1000;
   const timeInMin = destinationTime.duration.value / 60;
 
@@ -40,7 +50,12 @@ console.log(destinationTime);
 };
 
 module.exports.create = async ({user,pickup,destination,vehicleType,distance,duration})=>{
-  console.log("inside create service",pickup,destination)
+  console.log("user",user);
+  console.log("pickup",pickup);
+  console.log("destination",destination);
+  console.log("vehicleType",vehicleType);
+  console.log("distance",distance);
+  console.log("duration",duration);
     if(!user || !pickup || !destination ||!vehicleType || !distance || !duration){
         throw new Error('All fields are required');
     }
@@ -158,3 +173,22 @@ module.exports.endRide = async ({rideId, captain}) =>{
     })
   return ride;
 }
+module.exports.getCaptainInTheRadius = async (lat, lng) => {
+  const MAX_RETRIES = 3;
+
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    const captains = await mapService.getCaptainInTheRadius(lat, lng, 10);
+
+    if (captains.length > 0) {
+      return captains;
+    }
+
+   await delay(1000 * Math.pow(2, i));
+  }
+
+  throw new AppError(
+    "No captains available nearby. Please try again later.",
+    "NO_CAPTAIN",
+    404
+  );
+};

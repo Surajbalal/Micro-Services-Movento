@@ -1,8 +1,8 @@
 // const cookie = require('cookie-parser');
 // const captainModel = require('../models/captain.model');
 const jwt = require('jsonwebtoken');
-// const blackListTokenModel = require('../models/blackListToken.model');
 const { publishToQueue } = require('../services/rabbit');
+const verifyKey = require('../utils/verifyToken');
 module.exports.authCaptain = async(req, res, next) =>{
     try {
         console.log(req)
@@ -17,23 +17,21 @@ module.exports.authCaptain = async(req, res, next) =>{
         }
 
         
-        // const isBlackList = await blackListTokenModel.findOne({token});
-        const isBlackList =  await publishToQueue("isBlackList-captain",{token})
+        // Ask AUTH service to check its blacklist DB (tokens are blacklisted there on logout)
+        const isBlackList = await publishToQueue("isBlackList-user", { token });
         if(isBlackList){
-            
-            console.log(isBlackList,"indside auth user");
+            console.log(isBlackList, "inside auth captain blacklist check");
             return res.status(401).json({message:"Unauthorized"});
         }
         console.log("dcvsdfvsdfvsdfvsdfvsdfvsdvdsfv")
 
-        const decode  =  jwt.verify(token,process.env.JWT_SECRET);
-        if (decode.role !== 'captain') {
-            console.log("inside role check")
-             return res.status(401).json({message:"Unauthorized"});
+        const decode = await verifyKey(token);
+        if (!decode || decode.role !== 'captain') {
+            console.log("inside role check");
+            return res.status(401).json({message:"Unauthorized"});
         }
         
-        // const captain = await captainModel.findById(decode._id);
-        const captain = await publishToQueue("get-captain",{_id:decode._id})
+        const captain = await publishToQueue("get-captain", { _id: decode.sub });
         console.log(captain,"this is functionality check");
         if(!captain){
           

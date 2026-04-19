@@ -1,4 +1,5 @@
 import axios from "axios";
+import toast from "react-hot-toast";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL,
@@ -23,11 +24,7 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       // call api for refresh token
       try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_BASE_URL}/auth/users/refresh-token`,
-          {},
-          { withCredentials: true },
-        );
+        const response = await axiosInstance.post(`/auth/users/refresh-token`);
         const newToken = response.data.token;
 
         localStorage.setItem("token", newToken);
@@ -39,11 +36,22 @@ axiosInstance.interceptors.response.use(
       } catch (error) {
         // if refresh token fails, clear local storage and redirect to login
         localStorage.removeItem("token");
-        window.location.href = "/login";
+      toast.error("Session expired. Please login again.");
+
+        // window.location.href = "/login";
+        return Promise.reject(error);
       }
     }
     // If not a 401 error or request already retried,
     // forward the error to the caller
+      if (!error.config?.skipGlobalError) {
+      const message =
+        error.response?.data?.message || "Something went wrong";
+
+      toast.error(message);
+    }
+
     return Promise.reject(error);
   },
+  
 );

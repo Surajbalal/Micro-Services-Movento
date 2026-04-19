@@ -6,7 +6,7 @@ const app = require('./app');
 const server = http.createServer(app);
 
 const config = require('./config/config');
-const { connectRabbitMQ } = require('./services/rabbit');
+const { connectRabbitMQ ,subscribeToQueue} = require('./services/rabbit');
 const { startOutboxWorker } = require('./worker/outbox.worker');
 
 const bootstrap = async () =>{
@@ -18,7 +18,7 @@ const bootstrap = async () =>{
      
      // Start the background poller now that queues are ready
      startOutboxWorker();
-
+    await subscribeToQueue("isBlackList-user")
      await server.listen(config.PORT,()=>{
        console.log(`server is running on PORT: ${config.PORT}`)
      })

@@ -24,6 +24,7 @@
     "jwks-rsa": "^4.0.1",
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.1",
+    "react-hot-toast": "^2.6.0",
     "redis": "^5.11.0",
     "socket.io": "^4.8.3"
   }

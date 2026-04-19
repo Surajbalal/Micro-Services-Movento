@@ -51,45 +51,47 @@ async function publishToQueue(queue, message) {
 }
 
 // Subscribe to a specific queue
-// async function subscribeToQueue(queue) {
+async function subscribeToQueue(queue) {
 
-//     if (!channel) {
-//         throw new Error('RabbitMQ channel is not initialized');
-//     }
-//     await channel.assertQueue(queue);
-//     channel.consume(queue, async(msg) => {
+    if (!channel) {
+        throw new Error('RabbitMQ channel is not initialized');
+    }
+    await channel.assertQueue(queue);
+    channel.consume(queue, async(msg) => {
 
-//           const data = JSON.parse(msg.content.toString());
-//           console.log("Received message on:",queue);
-//           console.log(data);
+          const data = JSON.parse(msg.content.toString());
+          console.log("Received message on:",queue);
+          console.log(data);
 
-//           let response;
+          let response;
 
-//           if(queue == "isBlackList-user"){
-//             console.log("called",queue);
-//             response = await blackListTokenModel.findOne({token:data.token});
+          if(queue == "isBlackList-user"){
+            console.log("called",queue);
+            response = await blackListTokenModel.findOne({token:data.token});
 
-//           } else if(queue == "get-user"){
-//             response = await userModel.findById(data._id);
-//           }else if(queue == 'update-user'){
-//             response = await userModel.findByIdAndUpdate(data._id,{$set: data.updateData});
-//           }
-//           channel.sendToQueue(
-//             msg.properties.replyTo,
-//             Buffer.from(JSON.stringify(response)),
-//             {
-//                 correlationId: msg.properties.correlationId
-//             }
-//         );
+          }
+          //  else if(queue == "get-user"){
+          //   response = await userModel.findById(data._id);
+          // }else if(queue == 'update-user'){
+          //   response = await userModel.findByIdAndUpdate(data._id,{$set: data.updateData});
+          // }
+          channel.sendToQueue(
+            msg.properties.replyTo,
+            Buffer.from(JSON.stringify(response)),
+            {
+                correlationId: msg.properties.correlationId
+            }
+        );
 
-//         channel.ack(msg);
+        channel.ack(msg);
 
-//     });
-// }
+    });
+}
 
 // Initialize the RabbitMQ connection
 
 module.exports = {
   publishToQueue,
   connectRabbitMQ,
+  subscribeToQueue
 };

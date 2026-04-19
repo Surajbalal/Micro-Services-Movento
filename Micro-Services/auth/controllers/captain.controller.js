@@ -4,11 +4,13 @@ const blackListModel = require("../models/blackListToken.model");
 const { validationResult } = require("express-validator");
 const captainService = require("../services/captain.service");
 const emailService = require("../services/email.service");
-const config = require("../config/config");
 const jwt = require("jsonwebtoken");
 const sessionModel = require("../models/session.model");
 const { generateOtp, getOtpHtml } = require("../utils/util");
 const otpModel = require("../models/otp.model");
+const { REFRESH_TOKEN_COOKIE_OPTIONS } = require("../config/cookieOptions");
+const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
+const { publicKey } = require("../config/keys");
 
 module.exports.registerCaptain = async (req, res, next) => {
   const errors = validationResult(req);
@@ -18,36 +20,50 @@ module.exports.registerCaptain = async (req, res, next) => {
 
   const { fullName, email, password, vehicle } = req.body;
 
-  const isCaptainAlready = await captainModel.findOne({ email });
-
-  if (isCaptainAlready) {
-    return res.status(400).json({ message: "Captain already exist" });
-  }
+  const existingCaptain = await captainModel.findOne({ email }).lean();
 
   const hashPassword = await captainModel.hashPassword(password);
 
-  const captain = await captainService.createCaptain({
-    firstName: fullName.firstName,
-    lastName: fullName.lastName,
-    email,
-    password: hashPassword,
-    role: "captain",
-    vehicle
-  });
+  let captain;
+
+  if (existingCaptain) {
+    if (existingCaptain.verified) {
+      return res.status(400).json({ message: "Captain already exists" });
+    }
+
+    // update unverified captain (re-registration)
+    captain = await captainService.updateCaptain({
+      email,
+      password: hashPassword,
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      vehicle,
+    });
+  } else {
+    // create new captain
+    captain = await captainService.createCaptain({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashPassword,
+      role: "captain",
+      vehicle,
+    });
+  }
 
   const otp = generateOtp();
   const html = getOtpHtml(otp);
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
-  
+
   await captainService.createOtp({
     email,
     otpHash,
-    user: captain._id
+    user: captain._id,
   });
 
-  await emailService.sendEmail(email, "OTP Verification", `Your OTP code is ${otp}`, html);
+  await emailService.sendEmail(email, "OTP Verification", `OTP: ${otp}`, html);
 
-  return res.status(201).json({ captain });
+  return res.status(200).json({ message: "OTP sent successfully" });
 };
 
 module.exports.captainLogin = async (req, res, next) => {
@@ -64,8 +80,8 @@ module.exports.captainLogin = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid email or password" });
   }
 
-  if(!captain.verified){
-    return res.status(401).json({message: "Email not verified"})
+  if (!captain.verified) {
+    return res.status(401).json({ message: "Email not verified" });
   }
 
   const isMatch = await captain.comparePassword(password);
@@ -74,25 +90,26 @@ module.exports.captainLogin = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid email or password" });
   }
 
-  const refreshToken = captain.genrateRefreshToken();
-  const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-
   const session = await captainService.createSession({
     user: captain._id,
-    refreshTokenHash,
     ip: req.ip,
-    userAgent: req.headers['user-agent']
+    userAgent: req.headers["user-agent"],
   });
 
-  const token = captain.genrateAcessToken(false, session._id);
-  
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
-  
+  const refreshToken = generateRefreshToken({ user: captain, sessionId: session._id });
+
+  const refreshTokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
+  session.refreshTokenHash = refreshTokenHash;
+  await session.save();
+
+  const token = generateAccessToken({ user: captain, isNewUser: false, sessionId: session._id });
+
+  res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+
   return res.status(200).json({ token, captain });
 };
 
@@ -107,35 +124,40 @@ module.exports.verifyEmail = async (req, res) => {
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
-  const captain = await captainModel.findByIdAndUpdate(otpDoc.user, {
-    verified: true
-  }, { new: true });
+  const captain = await captainModel.findByIdAndUpdate(
+    otpDoc.user,
+    { verified: true },
+    { new: true }
+  );
 
   await otpModel.deleteMany({ user: otpDoc.user });
 
-  const refreshToken = captain.genrateRefreshToken();
-  const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
-  
+  const refreshToken = generateRefreshToken({ user: captain, sessionId: undefined });
+
+  const refreshTokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
   const session = await captainService.createSession({
     user: captain._id,
     refreshTokenHash,
     ip: req.ip,
-    userAgent: req.headers['user-agent']
-  });
-  
-  const token = captain.genrateAcessToken(true, session._id);
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000
+    userAgent: req.headers["user-agent"],
   });
 
-  return res.status(200).json({ 
-    message: "Email verified successfully", 
+  const token = generateAccessToken({
+    user: captain,
+    isNewUser: true,
+    sessionId: session._id,
+  });
+
+  res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+
+  return res.status(200).json({
+    message: "Email verified successfully",
     token,
-    captain 
+    captain,
   });
 };
 
@@ -145,49 +167,70 @@ module.exports.refreshToken = async (req, res) => {
   if (!refreshToken) {
     return res.status(401).json({ message: "Refresh token not found" });
   }
-  
+
   let decoded;
   try {
-    decoded = jwt.verify(refreshToken, config.JWT_REFRESH_TOKEN_SECRET);
-  } catch(err) {
-    return res.status(401).json({ message: "Invalid refresh token" });
+    decoded = jwt.verify(refreshToken, publicKey, {
+      algorithms: ["RS256"],
+      issuer: "auth-service",
+      audience: "auth-service",
+    });
+
+    const { sessionId, sub } = decoded;
+    if (!sessionId) {
+      return res.status(401).json({ message: "Invalid token (no session)" });
+    }
+
+    const session = await sessionModel.findById(String(sessionId));
+
+    if (!session || session.revoke) {
+      res.clearCookie("refreshToken");
+      return res.status(401).json({ message: "Session expired or revoked" });
+    }
+
+    const refreshTokenHash = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
+
+    // Reuse Detection
+    if (session.refreshTokenHash !== refreshTokenHash) {
+      await sessionModel.updateMany(
+        { user: sub },
+        { $set: { revoke: true } }
+      );
+      res.clearCookie("refreshToken");
+      return res
+        .status(401)
+        .json({ message: "Security issue detected. Please login again." });
+    }
+
+    const captain = await captainModel.findById(sub).lean();
+
+    if (!captain) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    const token = generateAccessToken({ user: captain, sessionId: session._id });
+    const newRefreshToken = generateRefreshToken({ user: captain, sessionId: session._id });
+    const newRefreshTokenHash = crypto
+      .createHash("sha256")
+      .update(newRefreshToken)
+      .digest("hex");
+
+    session.refreshTokenHash = newRefreshTokenHash;
+    await session.save();
+
+    res.cookie("refreshToken", newRefreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+
+    return res.status(200).json({
+      message: "Access token refresh successfully",
+      token,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid or expired refresh token" });
   }
-
-  const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
-
-  const session = await sessionModel.findOne({
-    refreshTokenHash,
-    revoke: false
-  });
-  
-  if (!session) {
-    return res.status(401).json({ message: "Invalid refresh token" });
-  }
-
-  const captain = await captainModel.findById(decoded._id);
-
-  if (!captain) {
-    return res.status(401).json({ message: "Invalid refresh token" });
-  }
-
-  const token = captain.genrateAcessToken(false, session._id);
-  const newRefreshToken = captain.genrateRefreshToken();
-  const newRefreshTokenHash = crypto.createHash("sha256").update(newRefreshToken).digest("hex");
-
-  session.refreshTokenHash = newRefreshTokenHash;
-  await session.save();  
-  
-  res.cookie("refreshToken", newRefreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
-  
-  res.status(200).json({
-    message: "Access token refresh successfully",
-    token
-  });
 };
 
 module.exports.logoutCaptain = async (req, res, next) => {
@@ -197,21 +240,36 @@ module.exports.logoutCaptain = async (req, res, next) => {
     return res.status(400).json({ message: "Refresh token not found" });
   }
 
-  const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+  const refreshTokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
 
   const session = await sessionModel.findOne({
     refreshTokenHash,
-    revoke: false
+    revoke: false,
   });
 
   if (!session) {
     return res.status(400).json({ message: "Invalid refresh token" });
   }
 
+  // Revoke the refresh session
   session.revoke = true;
-  await session.save(); 
-  res.clearCookie("refreshToken");
+  await session.save();
 
+  // Blacklist the access token so it's immediately invalid (not just after 15min expiry)
+  const accessToken = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
+  if (accessToken) {
+    await blackListModel.create({
+      token: accessToken,
+      userId: req.user?._id,
+      role: "captain",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min = access token TTL
+    });
+  }
+
+  res.clearCookie("refreshToken");
   res.status(200).json({ message: "Logout successfully" });
 };
 
@@ -224,17 +282,33 @@ module.exports.logoutAllCaptain = async (req, res) => {
 
   let decoded;
   try {
-    decoded = jwt.verify(refreshToken, config.JWT_REFRESH_TOKEN_SECRET);
-  } catch(err) {
+    decoded = jwt.verify(refreshToken, publicKey, {
+      algorithms: ["RS256"],
+      issuer: "auth-service",
+      audience: "auth-service",
+    });
+  } catch (err) {
     return res.status(401).json({ message: "Invalid refresh token" });
   }
 
-  await sessionModel.updateMany({
-    user: decoded._id,
-    revoke: false
-  }, { revoke: true });
+  // Revoke all sessions for this captain
+  await sessionModel.updateMany(
+    { user: decoded.sub, revoke: false },
+    { $set: { revoke: true } }
+  );
 
-  res.clearCookie('refreshToken');
+  // Blacklist the current access token so it's immediately invalid
+  const accessToken = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
+  if (accessToken) {
+    await blackListModel.create({
+      token: accessToken,
+      userId: req.user?._id,
+      role: "captain",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+  }
+
+  res.clearCookie("refreshToken");
 
   return res.status(200).json({ message: "Logout from all devices successfully" });
 };

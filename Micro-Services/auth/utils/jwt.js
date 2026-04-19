@@ -18,7 +18,7 @@ const generateAccessToken = ({user, isNewUser = false, sessionId}) =>{
             expiresIn: JWT_ACCESS_TOKEN_EXPIRY,
             keyid: KEY_ID,
             issuer: "auth-service",
-            audience: "user-service",
+           audience: ["user-service", "captain-service"],
             jwtid: String(sessionId)
          }
     )

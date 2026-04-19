@@ -8,6 +8,7 @@ const config = require("../config/config");
 const jwt = require("jsonwebtoken");
 const sessionModel = require("../models/session.model");
 const { generateOtp, getOtpHtml } = require("../utils/util");
+const { REFRESH_TOKEN_COOKIE_OPTIONS } = require("../config/cookieOptions");
 const otpModel = require("../models/otp.model");
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 const { publicKey } = require("../config/keys");
@@ -94,18 +95,17 @@ module.exports.loginUser = async (req, res) => {
 
 console.log(session,"session id");
   const token = generateAccessToken({user, isNewUser: false , sessionId: session._id });
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
   return res.status(200).json({ token, user });
 };
 
 module.exports.refreshToken = async (req, res) => {
+  // ── DEBUG (remove after fixing) ──────────────────────────────────────────
+  console.log("=== REFRESH TOKEN ===");
+  console.log("req.headers.cookie :", req.headers.cookie);
+  console.log("req.cookies        :", req.cookies);
+  // ─────────────────────────────────────────────────────────────────────────
   const refreshToken = req.cookies.refreshToken;
-  
 
   if (!refreshToken) {
     return res.status(401).json({ message: "Refresh token not found" });
@@ -158,12 +158,7 @@ module.exports.refreshToken = async (req, res) => {
 
   session.refreshTokenHash = newRefreshTokenHash;
   await session.save();
-  res.cookie("refreshToken", newRefreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  res.cookie("refreshToken", newRefreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
    return res.status(200).json({
     message: "Access token refresh successfully",
     token,
@@ -176,8 +171,6 @@ module.exports.refreshToken = async (req, res) => {
    
 };
 module.exports.logoutUser = async (req, res) => {
-  // res.clearCookie("token");
-  // const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
@@ -195,14 +188,25 @@ module.exports.logoutUser = async (req, res) => {
   });
 
   if (!session) {
-    return res.status(400).json({ message: "Invalid refresh token " });
+    return res.status(400).json({ message: "Invalid refresh token" });
   }
 
-  // await blackListModel.create({token});
+  // Revoke the refresh session
   session.revoke = true;
   await session.save();
-  res.clearCookie("refreshToken");
 
+  // Blacklist the access token so it's immediately invalid (not just after 15min expiry)
+  const accessToken = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
+  if (accessToken) {
+    await blackListModel.create({
+      token: accessToken,
+      userId: req.user?._id,
+      role: "user",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min = access token TTL
+    });
+  }
+
+  res.clearCookie("refreshToken");
   res.status(200).json({ message: "Logout successfully" });
 };
 module.exports.logoutAllUser = async (req, res) => {
@@ -212,15 +216,22 @@ module.exports.logoutAllUser = async (req, res) => {
     return res.status(400).json({ message: "Refresh token not found" });
   }
 
-  const decoded = jwt.verify(refreshToken, config.JWT_REFRESH_TOKEN_SECRET);
-
+  // Revoke all sessions for this user
   await sessionModel.updateMany(
-    {
-      user: decoded._id,
-      revoke: false,
-    },
+    { user: req.user._id, revoke: false },
     { $set: { revoke: true } },
   );
+
+  // Blacklist the current access token so it's immediately invalid
+  const accessToken = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
+  if (accessToken) {
+    await blackListModel.create({
+      token: accessToken,
+      userId: req.user?._id,
+      role: "user",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+  }
 
   res.clearCookie("refreshToken");
 
@@ -263,12 +274,7 @@ module.exports.verifyEmail = async (req, res) => {
     sessionId: session._id,
   });
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
 
   return res
     .status(200)

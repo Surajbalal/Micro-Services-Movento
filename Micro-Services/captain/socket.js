@@ -66,6 +66,27 @@ async function initializeSocket(server) {
       console.log("Client disconnected:", socket.id);
     });
 
+    // --- Call Signaling Events ---
+    socket.on("call-user", ({ rideId, callerId, receiverId }) => {
+      console.log(`Call initiated by ${callerId} for ${receiverId} in ride: ${rideId}`);
+      if (rideId) io.to(rideId).emit("incoming-call", { rideId, callerId, receiverId });
+    });
+
+    socket.on("accept-call", ({ rideId, callerId, receiverId }) => {
+      console.log(`Call accepted by ${receiverId} for ${callerId} in ride: ${rideId}`);
+      if (rideId) io.to(rideId).emit("call-accepted", { rideId, callerId, receiverId });
+    });
+
+    socket.on("reject-call", ({ rideId, callerId, receiverId }) => {
+      console.log(`Call rejected by ${receiverId} for ${callerId} in ride: ${rideId}`);
+      if (rideId) io.to(rideId).emit("call-rejected", { rideId, callerId, receiverId });
+    });
+
+    socket.on("end-call", ({ rideId, callerId, receiverId }) => {
+      console.log(`Call ended in ride: ${rideId}`);
+      if (rideId) io.to(rideId).emit("call-ended", { rideId, callerId, receiverId });
+    });
+
   });
 
 }

@@ -2,6 +2,7 @@ const { cookie } = require("express-validator");
 
 const jwt = require('jsonwebtoken');
 const { publishToQueue } = require("../services/rabbit");
+const verifyToken = require("../utils/verifyToken");
 
 module.exports.authUser = async (req,res,next)=>{
     const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
@@ -23,7 +24,7 @@ module.exports.authUser = async (req,res,next)=>{
         return res.status(401).json({message:"Unauthorised"});
     }
     try {
-        const decode =  jwt.verify(token,process.env.JWT_SECRET);
+        const decode =  await verifyToken(token);
         console.log("decode check",decode);
         if (decode.role !== 'user') {
             return res.status(401).json({message:"Unauthorized access"});
@@ -32,7 +33,7 @@ module.exports.authUser = async (req,res,next)=>{
         // const user =await userModel.findById(decode._id);
         let user;
         try {
-            user = await publishToQueue('get-user',{_id: decode._id});
+            user = await publishToQueue('get-user',{_id: decode.sub});
         } catch (err) {
             console.error("RabbitMQ get-user error", err);
             return res.status(500).json({message: "Failed to fetch user context"});

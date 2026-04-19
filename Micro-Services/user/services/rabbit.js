@@ -65,9 +65,9 @@ async function subscribeToQueue(queue) {
 
     if (queue == "isBlackList-user") {
       console.log("called", queue);
-      response = await blackListTokenModel.findOne({ token: data.token });
+      response = await blackListTokenModel.findOne({ token: data.token }).lean();
     } else if (queue == "get-user") {
-      response = await userModel.findById(data._id);
+      response = await userModel.findById(data._id).lean();
     } else if (queue == "update-user") {
       response = await userModel.findByIdAndUpdate(data._id, {
         $set: data.updateData,

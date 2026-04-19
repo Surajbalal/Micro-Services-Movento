@@ -43,10 +43,13 @@ const config = require('../config/config');
  }
 
  userSchema.methods.comparePassword = async function(password){
-   console.log("this is inside compare password method",password);
+     console.log("this is inside compare password method",password);
+  console.log("this is inside compare password method",this.password);
     return bcrypt.compare(password,this.password);
  }
  userSchema.statics.hashPassword = async function(password){
+  if (!password) throw new Error("Password is required");
+
     const hashedPassword = await bcrypt.hash(password,10);
     return hashedPassword;
  }

@@ -3,6 +3,7 @@ const captainModel = require('../models/captain.model');
 const jwt = require('jsonwebtoken');
 const blackListTokenModel = require('../models/blackListToken.model');
 const verifyKey = require('../utils/verifyToken');
+const { publishToQueue } = require('../services/rabbit');
 module.exports.authCaptain = async(req, res, next) =>{
     try {
         const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
@@ -12,12 +13,19 @@ module.exports.authCaptain = async(req, res, next) =>{
         }
 
         
-        const isBlackList = await blackListTokenModel.findOne({token});
+        // const isBlackList = await blackListTokenModel.findOne({token});
         
-        if(isBlackList){
-            return res.status(401).json({message:"Unauthorized"});
-        }
-
+        // if(isBlackList){
+        //     return res.status(401).json({message:"Unauthorized"});
+        // }
+ // Ask AUTH service to check its blacklist DB (that's where tokens are blacklisted on logout)
+    const isBlackListed = await publishToQueue('isBlackList-user', { token });
+    console.log(isBlackListed, "blacklist check");
+    
+    if(isBlackListed){
+        console.log("inside blacklist check");
+        return res.status(401).json({message:"Unauthorised"});
+    }
        const decoded =  await verifyKey(token);
          if(!decoded){
              return res.status(401).json({message:"Unauthorized access"});
@@ -26,7 +34,7 @@ module.exports.authCaptain = async(req, res, next) =>{
             return res.status(401).json({message:"Unauthorized"});
         }
         
-        const captain = await captainModel.findById(decoded._id);
+        const captain = await captainModel.findById(decoded.sub);
 
         if(!captain){
             if (decoded.isNewUser === true) {
@@ -47,6 +55,7 @@ module.exports.authCaptain = async(req, res, next) =>{
        return next();
 
     } catch (error) {
+        console.log(error);
         return res.status(401).json({message:"Unauthorized"});
     }
 }

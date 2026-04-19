@@ -20,7 +20,7 @@ router.post('/login',[
 loginLimiter,userController.loginUser
 );
 
-router.get('/refresh-token',refreshLimiter,userController.refreshToken);
+router.post('/refresh-token',refreshLimiter,userController.refreshToken);
 
 
 router.get('/logOut',authMiddleware,userController.logoutUser);
