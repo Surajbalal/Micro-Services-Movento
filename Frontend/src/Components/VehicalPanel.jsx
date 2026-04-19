@@ -1,71 +1,172 @@
-import React from 'react'
+import React, { useState } from 'react';
 
 function VehicalPanel(props) {
+  const [selectedVehicle, setSelectedVehicle] = useState("car");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
+
+  const vehicles = [
+    {
+      id: "car",
+      name: "Go Intercity",
+      description: "Affordable outstation rides in compact cars",
+      time: "9 mins away",
+      duration: "1:14",
+      image: "https://www.pngplay.com/wp-content/uploads/8/Uber-PNG-Photos.png",
+      fare: props.fare.car || 282.39
+    },
+    {
+      id: "motorcycle",
+      name: "Moto",
+      description: "Affordable motorcycle rides",
+      time: "4 mins away",
+      duration: "1:05",
+      image: "https://cn-geo1.uber.com/image-proc/crop/resizecrop/udam/format=auto/width=552/height=368/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC91ZGFtLWFzc2V0cy8yYzdmYTE5NC1jOTU0LTRjYjItOWM2ZC1hM2I4NjAxMzcwZjUucG5n",
+      fare: props.fare.motorcycle || 122.00
+    },
+    {
+      id: "auto", 
+      name: "Sedan Intercity",
+      description: "Outstation rides in comfortable sedans",
+      time: "10 mins away", 
+      duration: "1:16",
+      image: "https://cn-geo1.uber.com/image-proc/crop/resizecrop/udam/format=auto/width=552/height=368/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC91ZGFtLWFzc2V0cy8xZGRiOGM1Ni0wMjA0LTRjZTQtODFjZS01NmExMWEwN2ZlOTgucG5n",
+      fare: props.fare.auto || 302.40
+    }
+  ];
+
+  const handleVehicleSelect = (vehicle) => {
+    console.log(`${vehicle.name} selected`);
+    setSelectedVehicle(vehicle.id);
+    props.setVehicleType(vehicle.id);
+  };
+
+  const handleConfirm = () => {
+    console.log("Confirm button clicked, going to searching for driver");
+    const selectedVehicleData = vehicles.find(v => v.id === selectedVehicle);
+    props.setVehicleType(selectedVehicle);
+    props.setIsVehicalPanelOpen(false);
+    props.setIsSearchingPanelOpen(true);
+  };
+
   return (
-    <div className="p-3 sm:p-4 lg:p-6">
-      <button
-        onClick={() => props.setIsVehicalPanelOpen(false)}
-        className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-gray-600 text-xl sm:text-2xl transition-colors duration-200 focus:outline-none"
-      >
-        <i className="ri-arrow-down-wide-line"></i>
-      </button>
-      <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900">Choose a Vehicle</h3>
-      
-      <div
-        onClick={() => {
-          props.setVehicleType("car");
-          props.setIsConfirmRidePanelOpen(true);
-        }}
-        className="flex items-center w-full p-3 sm:p-4 mb-2 sm:mb-3 border-2 border-gray-200 rounded-lg sm:rounded-xl hover:border-black hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98"
-      >
-        <img className="h-10 sm:h-12 lg:h-14 object-contain" src="https://www.pngplay.com/wp-content/uploads/8/Uber-PNG-Photos.png" alt="UberGo" />
-        <div className="flex-1 ml-3 sm:ml-4">
-          <h4 className="font-medium text-sm sm:text-base text-gray-900">
-            UberGo <span className="text-gray-600"><i className="ri-user-3-fill"></i>4</span>
-          </h4>
-          <h5 className="font-medium text-xs sm:text-sm text-gray-700">2 mins away</h5>
-          <p className="font-normal text-xs text-gray-500">Affordable, compact rides</p>
-        </div>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900">₹{props.fare.car}</h2>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <button
+          onClick={() => {
+            console.log("Down arrow clicked, closing vehicle panel");
+            props.setIsVehicalPanelOpen(false);
+          }}
+          className="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200 focus:outline-none"
+        >
+          <i className="ri-arrow-down-wide-line"></i>
+        </button>
+        <h3 className="text-lg font-semibold text-gray-900">Choose a ride</h3>
+        <div className="w-6"></div> {/* Spacer for centering */}
       </div>
-      
-      <div
-        onClick={() => {
-          props.setVehicleType("motorcycle");
-          props.setIsConfirmRidePanelOpen(true);
-        }}
-        className="flex items-center w-full p-3 sm:p-4 mb-2 sm:mb-3 border-2 border-gray-200 rounded-lg sm:rounded-xl hover:border-black hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98"
-      >
-        <img className="h-10 sm:h-12 lg:h-14 object-contain" src="https://cn-geo1.uber.com/image-proc/crop/resizecrop/udam/format=auto/width=552/height=368/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC91ZGFtLWFzc2V0cy8yYzdmYTE5NC1jOTU0LTRjYjItOWM2ZC1hM2I4NjAxMzcwZjUucG5n" alt="Moto" />
-        <div className="flex-1 ml-3 sm:ml-4">
-          <h4 className="font-medium text-sm sm:text-base text-gray-900">
-            Moto <span className="text-gray-600"><i className="ri-user-3-fill"></i>1</span>
-          </h4>
-          <h5 className="font-medium text-xs sm:text-sm text-gray-700">4 mins away</h5>
-          <p className="font-normal text-xs text-gray-500">Affordable motorcycle rides</p>
-        </div>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900">₹{props.fare.motorcycle}</h2>
+
+      {/* Subtitle */}
+      <div className="px-4 pt-2 pb-4">
+        <p className="text-sm text-gray-600">Rides we think you'll like</p>
       </div>
-      
-      <div
-        onClick={() => {
-          props.setVehicleType("auto");
-          props.setIsConfirmRidePanelOpen(true);
-        }}
-        className="flex items-center w-full p-3 sm:p-4 mb-2 sm:mb-3 border-2 border-gray-200 rounded-lg sm:rounded-xl hover:border-black hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98"
-      >
-        <img className="h-10 sm:h-12 lg:h-14 object-contain" src="https://cn-geo1.uber.com/image-proc/crop/resizecrop/udam/format=auto/width=552/height=368/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC91ZGFtLWFzc2V0cy8xZGRiOGM1Ni0wMjA0LTRjZTQtODFjZS01NmExMWEwN2ZlOTgucG5n" alt="UberAuto" />
-        <div className="flex-1 ml-3 sm:ml-4">
-          <h4 className="font-medium text-sm sm:text-base text-gray-900">
-            UberAuto <span className="text-gray-600"><i className="ri-user-3-fill"></i>3</span>
-          </h4>
-          <h5 className="font-medium text-xs sm:text-sm text-gray-700">4 mins away</h5>
-          <p className="font-normal text-xs text-gray-500">Affordable auto rides</p>
+
+      {/* Vehicle Options */}
+      <div className="flex-1 overflow-y-auto px-4 pb-32">
+        {vehicles.map((vehicle) => (
+          <div
+            key={vehicle.id}
+            onClick={() => handleVehicleSelect(vehicle)}
+            className={`flex items-center w-full p-4 mb-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+              selectedVehicle === vehicle.id
+                ? 'border-black bg-gray-50'
+                : 'border-gray-200 hover:border-black hover:bg-gray-50'
+            }`}
+          >
+            {/* Vehicle Image */}
+            <div className="w-20 h-16 shrink-0">
+              <img 
+                className="w-full h-full object-contain" 
+                src={vehicle.image} 
+                alt={vehicle.name} 
+              />
+            </div>
+
+            {/* Vehicle Details */}
+            <div className="flex-1 ml-4">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="font-semibold text-gray-900">{vehicle.name}</h4>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">₹{vehicle.fare}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center text-xs text-gray-600 mb-1">
+                <i className="ri-time-line mr-1"></i>
+                <span>{vehicle.time}</span>
+                <span className="mx-2">•</span>
+                <span>{vehicle.duration}</span>
+              </div>
+              
+              <p className="text-xs text-gray-500">{vehicle.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom Action Bar */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Payment Method Dropdown */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowPaymentDropdown(!showPaymentDropdown)}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <i className="ri-money-rupee-circle-line text-gray-700 mr-2"></i>
+              <span className="text-sm font-medium text-gray-700">
+                {paymentMethod === "cash" ? "Cash" : "Pay Online"}
+              </span>
+              <i className="ri-arrow-down-s-line text-gray-500 ml-1"></i>
+            </button>
+            
+            {showPaymentDropdown && (
+              <div className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <button
+                  onClick={() => {
+                    setPaymentMethod("cash");
+                    setShowPaymentDropdown(false);
+                  }}
+                  className="flex items-center px-4 py-2 hover:bg-gray-50 w-full text-left"
+                >
+                  <i className="ri-money-rupee-circle-line text-gray-700 mr-2"></i>
+                  <span className="text-sm font-medium text-gray-700">Cash</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setPaymentMethod("online");
+                    setShowPaymentDropdown(false);
+                  }}
+                  className="flex items-center px-4 py-2 hover:bg-gray-50 w-full text-left"
+                >
+                  <i className="ri-bank-card-line text-gray-700 mr-2"></i>
+                  <span className="text-sm font-medium text-gray-700">Pay Online</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Button */}
+          <button
+            onClick={handleConfirm}
+            className="bg-black hover:bg-gray-800 text-white font-medium py-3 px-6 rounded-lg transition-transform active:scale-95"
+          >
+            Confirm
+          </button>
         </div>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900">₹{props.fare.auto}</h2>
       </div>
     </div>
-  )
+  );
 }
 
-export default VehicalPanel
+export default VehicalPanel;

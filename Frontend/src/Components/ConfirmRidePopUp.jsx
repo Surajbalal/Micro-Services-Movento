@@ -1,11 +1,10 @@
-import axios from 'axios';
+import captainAxiosInstance from '../api/captainAxiosInstance';
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 
 function ConfirmRidePopUp(props) {
   const [otp, setOtp] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const token = localStorage.getItem('captain-token')
   const navigate = useNavigate();
   
   const submitHandler = async (e) =>{
@@ -13,16 +12,9 @@ function ConfirmRidePopUp(props) {
       setIsLoading(true)
       
       try {
-        const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/rides/start-ride`,
-          {
-             params:{ rideId: props.ride._id,
-              otp: otp,
-            },
-            headers: {
-                Authorization : `bearer ${token}`
-              },
-          }
-        )
+        const response = await captainAxiosInstance.get(`/rides/start-ride`, {
+          params: { rideId: props.ride._id, otp: otp },
+        });
         if(response.status == 200){
            props.setIsConfirmPopUpOpen(false);
            props.setIsRidePopupOpen(false);
@@ -74,11 +66,11 @@ function ConfirmRidePopUp(props) {
           </div>
         </div>
         <div className="text-right">
-          <h5 className="text-base sm:text-lg font-semibold text-gray-900">
-            {(props.ride?.distance / 1000).toFixed(1)} KM
-          </h5>
-          <p className="text-xs sm:text-sm text-gray-500">Distance</p>
-        </div>
+           <h5 className="text-base sm:text-lg font-semibold text-gray-900">
+             {(props.ride?.distance / 1000).toFixed(1)} KM
+           </h5>
+           <p className="text-xs sm:text-sm text-gray-500">Distance</p>
+         </div>
       </div>
 
       <div className="space-y-1 mb-4 sm:mb-6">
@@ -149,6 +141,18 @@ function ConfirmRidePopUp(props) {
           </button>
         </div>
       </form>
+
+      {/* Call User button — styled like WaitingForDriver's Call Captain */}
+      {props.onCallUser && (
+        <button
+          type="button"
+          onClick={props.onCallUser}
+          className="mt-3 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-gray-200 hover:border-black hover:bg-gray-50 transition-all font-medium text-sm text-gray-900 focus:outline-none"
+        >
+          <i className="ri-phone-line text-lg"></i>
+          Call User
+        </button>
+      )}
     </div>
   )
 }

@@ -8,7 +8,7 @@ function SocketProvider({ children }) {
 
     useEffect(() => {
         // Initialize socket connection
-        const newSocket = io(`${import.meta.env.VITE_BASE_URL}`); // Replace with your server URL
+        const newSocket = io(`${import.meta.env.VITE_BASE_URL}`);
 
         newSocket.on('connect', () => {
             console.log('Connected to server');
@@ -31,16 +31,17 @@ useEffect(() => {
 
     // Function to send a message to a specific event
   const sendMessage = (eventName, message) => {
-  if (!socket || !socket.connected) {
-    console.warn("Socket not ready");
+  if (!socket) {
+    console.warn("Socket not initialized");
     return;
   }
   socket.emit(eventName, message);
 };
     // Function to receive a message from a specific event
   const receiveMessage = (eventName, callback) => {
-  if (!socket || !socket.connected) {
-    console.warn("⚠ Socket not ready");
+    console.log("inside receive message",eventName,callback);
+  if (!socket) {
+    console.warn("⚠ Socket not initialized");
     return;
   }
 

@@ -2,11 +2,11 @@ import React from 'react'
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from "../assets/logo.png";
-import axios from 'axios';
+import captainAxiosInstance from '../api/captainAxiosInstance';
 import { CaptainDataContext } from '../Context/CaptainContext';
 function CaptainLogin() {
-    const [email, setEmail] = useState('');
-    const [password,setPassword] = useState('');
+    const [email, setEmail] = useState('surajbalal786@gmail.com');
+    const [password,setPassword] = useState('Sisussmm786');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const {captain,setCaptain} = React.useContext(CaptainDataContext);
@@ -21,10 +21,7 @@ function CaptainLogin() {
   };
 
   try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_BASE_URL}/auth/captains/login`,
-      user
-    );
+    const response = await captainAxiosInstance.post(`/auth/captains/login`, user);
 
     if (response.status === 200) {
       const data = response.data;

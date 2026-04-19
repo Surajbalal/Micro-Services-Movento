@@ -1,13 +1,13 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { CaptainDataContext } from '../Context/CaptainContext';
-import axios from 'axios';
+import captainAxiosInstance from '../api/captainAxiosInstance';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 
 function CaptainSettings() {
   const { captain, setCaptain } = useContext(CaptainDataContext);
   const navigate = useNavigate();
-  const token = localStorage.getItem('captain-token');
+
 
   // Personal Information State
   const [firstName, setFirstName] = useState(captain?.fullName?.firstName || '');
@@ -36,27 +36,14 @@ function CaptainSettings() {
     setMessage('');
 
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_BASE_URL}/captain/profile`,
+      const response = await captainAxiosInstance.put(
+        `/captain/profile`,
         {
-          fullName: {
-            firstName,
-            lastName
-          },
+          fullName: { firstName, lastName },
           email,
           phone,
-          vehicle: {
-            vehicleType,
-            color: vehicleColor,
-            plate: vehiclePlate,
-            capacity: vehicleCapacity
-          },
+          vehicle: { vehicleType, color: vehicleColor, plate: vehiclePlate, capacity: vehicleCapacity },
           isActive: isAvailable
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
 
@@ -82,15 +69,9 @@ function CaptainSettings() {
     try {
       console.log('Updating captain availability to:', !isAvailable);
       
-      const response = await axios.put(
-        `${import.meta.env.VITE_BASE_URL}/captain/status`,
-        { isActive: isAvailable },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+      const response = await captainAxiosInstance.put(
+        `/captain/status`,
+        { isActive: isAvailable }
       );
 
       console.log('API Response:', response);

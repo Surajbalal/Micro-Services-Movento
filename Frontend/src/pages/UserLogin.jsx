@@ -3,13 +3,13 @@ import logo from "../assets/logo.png";
 import { Link, useNavigate } from 'react-router-dom';
 import UserSignup from './userSignup';
 import { useState } from 'react';
-import axios from 'axios';
+
 import { useContext } from 'react';
 import { UserDataContext } from '../Context/UserContext';
 import axiosInstance from '../api/axiosInstance';
 function UserLogin() {
-  const [email, setEmail] = useState('');
-  const [password,setPassword] = useState('');
+  const [email, setEmail] = useState('surajbalal786@gmail.com');
+  const [password,setPassword] = useState('test_password');
   const [isLoading, setIsLoading] = useState(false);
   const {user,setUser} = useContext(UserDataContext);
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ function UserLogin() {
      }
      
      try {
-       const response = await axiosInstance.post(`/users/login`,user);
+       const response = await axiosInstance.post(`/auth/users/login`,user);
        if(response.status == 200){
         const data = response.data;
         setUser(data.user);

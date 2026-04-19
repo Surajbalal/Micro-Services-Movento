@@ -2,7 +2,7 @@ import { useState, useContext, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { UserDataContext } from "../Context/UserContext";
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 
 function UserSignup() {
   const [step, setStep] = useState(1);
@@ -30,7 +30,7 @@ function UserSignup() {
     };
     
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/auth/users/register`, newUser)
+      const response = await axiosInstance.post(`/auth/users/register`, newUser);
       if (response.status === 201) {
         alert("OTP has been sent to your email!");
         setStep(2); // Move to OTP verification step
@@ -67,7 +67,7 @@ function UserSignup() {
     const otpValue = otp.join("");
     if (otpValue.length !== 6) return;
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/auth/users/verify-email`, {
+      const response = await axiosInstance.post(`/auth/users/verify-email`, {
         email: email,
         otp: otpValue,
       });

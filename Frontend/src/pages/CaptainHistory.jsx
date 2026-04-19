@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { CaptainDataContext } from '../Context/CaptainContext';
-import axios from 'axios';
+import captainAxiosInstance from '../api/captainAxiosInstance';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 
 function CaptainHistory() {
-  const { captain } = useContext(CaptainContext);
+  const { captain } = useContext(CaptainDataContext);
   const navigate = useNavigate();
-  const token = localStorage.getItem('captain-token');
 
   // State for rides history
   const [rides, setRides] = useState([]);
@@ -19,17 +18,9 @@ function CaptainHistory() {
   const fetchRidesHistory = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BASE_URL}/captain/rides/history`,
-        {
-          params: {
-            filter,
-            days: dateRange
-          },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await captainAxiosInstance.get(
+        `/captain/rides/history`,
+        { params: { filter, days: dateRange } },
       );
 
       if (response.status === 200) {

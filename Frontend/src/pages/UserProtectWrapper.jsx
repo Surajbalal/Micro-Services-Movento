@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UserDataContext } from '../Context/UserContext';
 import { useContext } from 'react';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 
 function UserProtectWrapper({children}) {
     const navigate = useNavigate();
@@ -15,12 +15,8 @@ function UserProtectWrapper({children}) {
     }
 
     const fetchProfile = (retryCount = 0) => {
-      axios
-        .get(`${import.meta.env.VITE_BASE_URL}/users/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+      axiosInstance
+        .get(`/users/profile`)
         .then((response) => {
           if (response.status === 200) {
             setUser(response.data);

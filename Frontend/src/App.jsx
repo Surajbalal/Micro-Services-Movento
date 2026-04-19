@@ -16,10 +16,20 @@ import CaptainSettings from "./pages/CaptainSettings";
 import CaptainHistory from "./pages/CaptainHistory";
 import Riding from "./Components/Riding";
 import CaptainRiding from "./Components/CaptainRiding";
+import { Toaster } from "react-hot-toast";
+import Call from "./Components/Call";
 
 function App() {
   return (
     <>
+     <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3000,
+        }}
+      />
+
       <Routes>
         <Route path="/" element={<Start />} />
         <Route path="/login" element={<UserLogin />} />
@@ -28,6 +38,7 @@ function App() {
         <Route path="/signup" element={<UserSignup />} />
         <Route path="/captain-login" element={<CaptainLogin />} />
         <Route path="/captain-signup" element={<CaptainSignup />} />
+        <Route path="/call" element={<Call />} />
 
         <Route
           path="/captain-home"

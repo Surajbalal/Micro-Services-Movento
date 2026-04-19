@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { CaptainDataContext } from "../Context/CaptainContext";
-import axios from "axios";
+import captainAxiosInstance from '../api/captainAxiosInstance';
 
 function CaptainSignup() {
     const [step, setStep] = useState(1);
@@ -41,10 +41,10 @@ function CaptainSignup() {
       }
       
       try {
-        const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/auth/captains/register`, newUser)
-        if (response.status === 201) {
+      const response = await captainAxiosInstance.post(`/auth/captains/register`, newUser);
+        if (response.status === 200) {
           alert("OTP has been sent to your email!");
-          setStep(2); // Move to OTP step
+          setStep(2);
         }
       } catch (error) {
         console.error("Signup Error", error);
@@ -78,7 +78,7 @@ function CaptainSignup() {
       const otpValue = otp.join("");
       if (otpValue.length !== 6) return;
       try {
-        const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/auth/captains/verify-email`, {
+        const response = await captainAxiosInstance.post(`/auth/captains/verify-email`, {
           email: email,
           otp: otpValue,
         });

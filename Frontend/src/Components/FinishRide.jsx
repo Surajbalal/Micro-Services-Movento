@@ -1,23 +1,17 @@
-import axios from 'axios';
+import captainAxiosInstance from '../api/captainAxiosInstance';
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 
 function FinishRide(props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const token = localStorage.getItem('captain-token');
+
   const endRide = async () =>{
     try {
       setIsSubmitting(true);
-      const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/end-ride`,
-        {
-          rideId: props.rideData._id,
-        },{
-          headers:{
-            Authorization : `bearer ${token}`
-          }
-        }
-      )
+      const response = await captainAxiosInstance.post(`/rides/end-ride`, {
+        rideId: props.rideData._id,
+      });
       if(response.status == 200){
         navigate('/captain-home')
       }
