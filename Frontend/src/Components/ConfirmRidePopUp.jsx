@@ -2,9 +2,14 @@ import captainAxiosInstance from '../api/captainAxiosInstance';
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 
-function ConfirmRidePopUp(props) {
+function  ConfirmRidePopUp(props) {
   const [otp, setOtp] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelStep, setCancelStep] = useState(1);
+  const [cancelReason, setCancelReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
+  const defaultReasons = ["User not reachable", "Wrong address", "Vehicle issue", "Other"];
   const navigate = useNavigate();
   
   const submitHandler = async (e) =>{
@@ -37,6 +42,40 @@ function ConfirmRidePopUp(props) {
     props.setIsConfirmPopUpOpen(false);
     // Don't reset ride accepted state - keep the floating button visible
   }
+
+  const cancelRideHandler = async () => {
+    try {
+      setIsLoading(true);
+      const response = await captainAxiosInstance.post(`/rides/cancel`, {
+        rideId: props.ride._id,
+        reason: cancelReason,
+        note: otherReason
+      });
+      if(response.status === 200){
+         setShowCancelModal(false);
+         setCancelStep(1);
+         setCancelReason("");
+         setOtherReason("");
+         props.setIsConfirmPopUpOpen(false);
+         props.setIsRidePopupOpen(false);
+         props.setIsRideAccepted(false);
+      }
+    } catch (error) {
+      console.error("Error cancelling ride:", error);
+      alert(error.response?.data?.message || "Failed to cancel ride.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setTimeout(() => {
+      setCancelStep(1);
+      setCancelReason("");
+      setOtherReason("");
+    }, 300);
+  };
   
   return (
     <div className="p-4 sm:p-6">
@@ -109,6 +148,85 @@ function ConfirmRidePopUp(props) {
         </div>
       </div>
 
+      {/* Cancel Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6 shadow-xl animate-slide-up relative">
+            <button 
+              onClick={closeCancelModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 focus:outline-none"
+            >
+              <i className="ri-close-line text-2xl"></i>
+            </button>
+            
+            {cancelStep === 1 ? (
+              <>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Cancel Ride</h3>
+                <p className="text-sm text-gray-500 mb-5">Select reason (required)</p>
+
+                <div className="space-y-3 mb-6">
+                  {defaultReasons.map((reason, index) => (
+                    <button 
+                      key={index} 
+                      type="button"
+                      onClick={() => {
+                        setCancelReason(reason);
+                        setCancelStep(2);
+                      }}
+                      className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-black transition-all focus:outline-none text-left"
+                    >
+                      <span className="text-sm font-medium text-gray-900">{reason}</span>
+                      <i className="ri-arrow-right-s-line text-gray-400 text-lg"></i>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <button 
+                    type="button"
+                    onClick={() => setCancelStep(1)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none"
+                  >
+                    <i className="ri-arrow-left-line text-gray-600"></i>
+                  </button>
+                  <h3 className="text-xl font-bold text-gray-900">Add Feedback</h3>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-lg mb-5 border border-gray-100">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Selected Reason</p>
+                  <p className="text-sm font-medium text-gray-900">{cancelReason}</p>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-sm text-gray-500 mb-2">
+                    {cancelReason === 'Other' ? 'Please specify (required)' : 'Additional notes (optional)'}
+                  </p>
+                  <textarea 
+                    value={otherReason}
+                    onChange={(e) => setOtherReason(e.target.value)}
+                    placeholder={cancelReason === 'Other' ? "Write your reason here..." : "Tell us more about why you're cancelling..."}
+                    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-black resize-none h-28 text-sm transition-colors"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={cancelRideHandler}
+                    disabled={isLoading || (cancelReason === 'Other' && !otherReason.trim())}
+                    className="w-full py-4 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-all focus:outline-none shadow-sm active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isLoading ? 'Cancelling...' : 'Submit Cancellation'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={submitHandler} className="space-y-4">
         <div>
           <input 
@@ -126,9 +244,9 @@ function ConfirmRidePopUp(props) {
         <div className="flex items-center justify-between w-full gap-3 sm:gap-4">
           <button
             type="button"
-            onClick={handleClose}
+            onClick={() => setShowCancelModal(true)}
             disabled={isLoading}
-            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 sm:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 text-sm sm:text-base disabled:opacity-50"
+            className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-medium py-3 sm:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 text-sm sm:text-base disabled:opacity-50"
           >
             Cancel
           </button>

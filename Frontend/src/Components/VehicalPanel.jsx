@@ -13,7 +13,7 @@ function VehicalPanel(props) {
       time: "9 mins away",
       duration: "1:14",
       image: "https://www.pngplay.com/wp-content/uploads/8/Uber-PNG-Photos.png",
-      fare: props.fare.car || 282.39
+      fare: props.fare?.car
     },
     {
       id: "motorcycle",
@@ -21,8 +21,8 @@ function VehicalPanel(props) {
       description: "Affordable motorcycle rides",
       time: "4 mins away",
       duration: "1:05",
-      image: "https://cn-geo1.uber.com/image-proc/crop/resizecrop/udam/format=auto/width=552/height=368/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC91ZGFtLWFzc2V0cy8yYzdmYTE5NC1jOTU0LTRjYjItOWM2ZC1hM2I4NjAxMzcwZjUucG5n",
-      fare: props.fare.motorcycle || 122.00
+      image: "https://imgs.search.brave.com/vKaXWDgr-kvl59nCEajWGwf4VDH7KTWau9QEsIbzAoY/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jbi1n/ZW8xLnViZXIuY29t/L2ltYWdlLXByb2Mv/Y3JvcC9yZXNpemVj/cm9wL3VkYW0vZm9y/bWF0PWF1dG8vd2lk/dGg9NTUyL2hlaWdo/dD0zNjgvc3JjYjY0/PWFIUjBjSE02THk5/MFlpMXpkR0YwYVdN/dWRXSmxjaTVqYjIw/dmNISnZaQzkxWkdG/dExXRnpjMlYwY3k4/NU5UTTROVEV5WkMx/bVpHVXhMVFJtTnpN/dFltUTFNUzA1WTJW/bVpqUmxNalUwWmpF/dWNHNW4",
+      fare: props.fare?.motorcycle
     },
     {
       id: "auto", 
@@ -31,22 +31,22 @@ function VehicalPanel(props) {
       time: "10 mins away", 
       duration: "1:16",
       image: "https://cn-geo1.uber.com/image-proc/crop/resizecrop/udam/format=auto/width=552/height=368/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC91ZGFtLWFzc2V0cy8xZGRiOGM1Ni0wMjA0LTRjZTQtODFjZS01NmExMWEwN2ZlOTgucG5n",
-      fare: props.fare.auto || 302.40
+      fare: props.fare?.auto
     }
   ];
 
   const handleVehicleSelect = (vehicle) => {
-    console.log(`${vehicle.name} selected`);
     setSelectedVehicle(vehicle.id);
     props.setVehicleType(vehicle.id);
   };
 
   const handleConfirm = () => {
-    console.log("Confirm button clicked, going to searching for driver");
     const selectedVehicleData = vehicles.find(v => v.id === selectedVehicle);
     props.setVehicleType(selectedVehicle);
     props.setIsVehicalPanelOpen(false);
-    props.setIsSearchingPanelOpen(true);
+    props.setIsVehicleSearchOpen(true);
+    // props.setIsSearchingPanelOpen(true);
+    props.createRide();
   };
 
   return (

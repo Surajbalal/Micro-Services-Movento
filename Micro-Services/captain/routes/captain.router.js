@@ -23,5 +23,5 @@ router.get('/profile',authCaptain,captainController.getProfile);
 
 router.post('/logout',authCaptain,captainController.logoutCaptain);
 
-router.put('/update',authCaptain,captainController.updateCaptain);
+router.put('/update-profile',authCaptain,captainController.updateCaptain);
 module.exports = router

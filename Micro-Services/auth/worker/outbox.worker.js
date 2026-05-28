@@ -14,7 +14,7 @@ const processOutbox = async () => {
       const event = await Outbox.findOneAndUpdate(
         { status: "PENDING" },
         { $set: { status: "PROCESSING" } },
-{ returnDocument: 'after' }
+        { returnDocument: "after" },
       );
 
       // If no events are pending, break the loop
@@ -24,7 +24,16 @@ const processOutbox = async () => {
 
       try {
         // Use the eventType (e.g., USER_CREATED) as the routing queue
-        await publishToQueue(event.eventType, event.payload);
+        console.log(" Event type:", event.eventType);
+        const response = await publishToQueue(event.eventType, event.payload);
+        console.log(" Response:", response);
+        // if(response && response.message == ){
+          
+        // }
+        console.log("is response valid",response);
+        if (response && response.success === false) {
+          throw new Error(response.error || "Consumer returned success: false");
+        }
 
         event.status = "SENT";
         event.sentAt = new Date();
@@ -35,7 +44,7 @@ const processOutbox = async () => {
         event.retryCount += 1;
         event.lastError = err.message;
 
-        if (event.retryCount >= 5 ) {
+        if (event.retryCount >= 5) {
           event.status = "FAILED";
           console.error(
             `🚨 CRITICAL: Event ${event._id} (type: ${event.eventType}) completely FAILED after 5 retries. Sent to DLQ. Admin intervention required.`,

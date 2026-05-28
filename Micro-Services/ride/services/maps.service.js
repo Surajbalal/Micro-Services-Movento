@@ -2,7 +2,8 @@ const  axios  = require("axios");
 const { error } = require("console");
 
 const { publishToQueue } = require("./rabbit");
-
+const rideModel = require("../models/ride.model");
+const AppError = require("../utils/appError");
 
 const apiKey = process.env.GOOGLE_MAPS_API;
 
@@ -17,7 +18,7 @@ module.exports.getAddressCoordinates = async(address) => {
       },
     });
     if (response.data.status !== "OK") {
-      throw new Error(response.data.status);
+      throw new AppError(response.data.status, "MAPS_API_ERROR", 500);
     }
 
     const location = response.data.results[0].geometry.location;
@@ -30,11 +31,14 @@ module.exports.getAddressCoordinates = async(address) => {
   } catch (error) {
     console.error("Error fetching coordinates:", error.message);
 
-
-    throw new Error("Unable to fetch coordinates for this address");
+    if (error instanceof AppError) throw error;
+    throw new AppError("Unable to fetch coordinates for this address", "GEOCODE_ERROR", 500);
   }
 }
 module.exports.getDistanceTime = async (origin, destination)=> {
+  console.log("origin",origin);
+  console.log("destination",destination);
+  console.log("apiKey",apiKey);
    const url = "https://maps.googleapis.com/maps/api/distancematrix/json";
 
 const params = {
@@ -45,29 +49,54 @@ const params = {
 
   try {
     const response = await axios.get(url, { params });
-   const data = response.data;
 
+    const data = response.data;
+
+    console.log("Google Response:", JSON.stringify(data, null, 2));
 
     if (response.status !== 200) {
-      throw new Error("Request failed");
+      throw new AppError(
+        "Request failed",
+        "MAPS_API_ERROR",
+        500
+      );
     }
-    const element = response.data.rows[0].elements[0];
 
-    if (response.data.status !== "OK" || element.status !== "OK") {
-      throw new Error("Invalid origin or destination");
+    if (
+      !data.rows ||
+      !data.rows[0] ||
+      !data.rows[0].elements ||
+      !data.rows[0].elements[0]
+    ) {
+      throw new AppError(
+        data.error_message || "Invalid Google Maps response",
+        "MAPS_API_ERROR",
+        500
+      );
     }
 
+    const element = data.rows[0].elements[0];
+
+    if (data.status !== "OK" || element.status !== "OK") {
+      throw new AppError(
+        "Invalid origin or destination",
+        "INVALID_LOCATION",
+        400
+      );
+    }
     return element;
   } catch (error) {
     console.error("Service error:", error.message);
-    throw error; 
+    if (error instanceof AppError) throw error;
+    throw new AppError(error.message, "MAPS_API_ERROR", 500); 
   }
 }
 module.exports.getAutoCompleteSuggestions = async(input)=>{
   if(!input){
-    throw new Error('Input is required');
+    throw new AppError('Input is required', "BAD_REQUEST", 400);
   }
   try {
+    console.log("apiKey",apiKey);
     const url = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
 
     const response = await axios.get(url, {
@@ -77,17 +106,28 @@ module.exports.getAutoCompleteSuggestions = async(input)=>{
       },
     });
 
-    if(response.data.status != 'OK'){
-      throw new Error('Unable to fetch suggestions')
-    }
+  if (
+   response.data.status !== "OK" &&
+   response.data.status !== "ZERO_RESULTS"
+) {
+
+   console.log(response.data);
+
+   throw new AppError(
+      response.data.error_message || "Unable to fetch suggestions",
+      "MAPS_API_ERROR",
+      500
+   );
+}
 
     return response.data.predictions;
   } catch (error) {
     console.error("Error fetching address suggestions:", error.message);
-    throw error
+    if (error instanceof AppError) throw error;
+    throw new AppError(error.message, "MAPS_API_ERROR", 500);
   }
 }
-module.exports.getCaptainInTheRadius = async (lat, lng, radius) => {
+module.exports.getCaptainInTheRadius = async (lat, lng, radius,vehicleType) => {
   try {
 
     console.log("Parameters received:", lat, lng, radius);
@@ -99,18 +139,25 @@ module.exports.getCaptainInTheRadius = async (lat, lng, radius) => {
     //     }
     //   }
     // });
-    const captains = await publishToQueue('get-captainInTheRadius',{lat, lng, radius})
+    const captains = await publishToQueue('get-captainInTheRadius',{lat, lng, radius,vehicleType})
+    console.log("captains",captains);
+    const busyCaptainsId = await rideModel.find({
+      captain:{$in: captains.map(c => c._id)},
+      status:{$in: ['accepted', 'ongoing']}
+    }).select("captain");
+    console.log("busyCaptainsId",busyCaptainsId);
+    const busyCaptainsSet = new Set(
+      busyCaptainsId.map(r => r.captain.toString())
+    )
+    const freeCaptains = captains.filter(captain => !busyCaptainsSet.has(captain._id.toString()));
 
     console.log("Captains inside radius:", captains);
 
-    return captains;
+    return freeCaptains;
 
   } catch (error) {
     console.error("Error in getCaptainInTheRadius:", error);
-    throw error;
+    if (error instanceof AppError) throw error;
+    throw new AppError(error.message, "RABBITMQ_ERROR", 500);
   }
 };
-
-
-
-

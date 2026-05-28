@@ -30,37 +30,79 @@ function CaptainSettings() {
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
 
   // Update captain profile
-  const updateProfile = async (e) => {
-    e.preventDefault();
-    setIsUpdating(true);
-    setMessage('');
+ const updateProfile = async (e) => {
+  e.preventDefault();
+  setIsUpdating(true);
+  setMessage("");
 
-    try {
-      const response = await captainAxiosInstance.put(
-        `/captain/profile`,
-        {
-          fullName: { firstName, lastName },
-          email,
-          phone,
-          vehicle: { vehicleType, color: vehicleColor, plate: vehiclePlate, capacity: vehicleCapacity },
-          isActive: isAvailable
-        }
-      );
+  try {
+    const updateData = {};
 
-      if (response.status === 200) {
-        setCaptain(response.data.captain);
-        setMessage('Profile updated successfully!');
-        setMessageType('success');
-      }
-    } catch (error) {
-      setMessage('Failed to update profile. Please try again.');
-      setMessageType('error');
-      console.error('Update profile error:', error);
-    } finally {
-      setIsUpdating(false);
+    // 🔹 Personal Info (partial update)
+    if (firstName !== captain?.fullName?.firstName) {
+      updateData.fullName = { ...updateData.fullName, firstName };
     }
-  };
 
+    if (lastName !== captain?.fullName?.lastName) {
+      updateData.fullName = { ...updateData.fullName, lastName };
+    }
+
+    // 🔹 Simple fields
+    if (email !== captain?.email) {
+      updateData.email = email;
+    }
+
+    if (phone !== captain?.phone && phone !== "") {
+      updateData.phone = phone;
+    }
+
+    // 🔹 Vehicle (send FULL object if ANY field changes)
+    const vehicleChanged =
+      vehicleType !== captain?.vehicle?.vehicleType ||
+      vehicleColor !== captain?.vehicle?.color ||
+      vehiclePlate !== captain?.vehicle?.plate ||
+      vehicleCapacity !== captain?.vehicle?.capacity;
+
+    if (vehicleChanged) {
+      updateData.vehicle = {
+        vehicleType,
+        color: vehicleColor,
+        plate: vehiclePlate,
+        capacity: vehicleCapacity,
+      };
+    }
+
+    // 🔹 Availability
+    if (isAvailable !== (captain?.isActive !== false)) {
+      updateData.isActive = isAvailable;
+    }
+
+    // 🔴 No changes
+    if (Object.keys(updateData).length === 0) {
+      setMessage("No changes detected");
+      setMessageType("error");
+      setIsUpdating(false);
+      return;
+    }
+
+    const response = await captainAxiosInstance.put(
+      `/captain/update-profile`,
+      updateData
+    );
+
+    if (response.status === 200) {
+      setCaptain(response.data.captain);
+      setMessage("Profile updated successfully!");
+      setMessageType("success");
+    }
+  } catch (error) {
+    setMessage("Failed to update profile. Please try again.");
+    setMessageType("error");
+    console.error("Update profile error:", error);
+  } finally {
+    setIsUpdating(false);
+  }
+};
   // Toggle availability status
   const toggleAvailabilityStatus = async () => {
     setIsUpdating(true);

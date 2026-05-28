@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { type } = require('os');
-
 
 const captainSchema = new mongoose.Schema({
     'fullName':{
@@ -20,6 +18,10 @@ const captainSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true
+    },
+    'isAvailable':{
+        type: Boolean,
+        default: true,
     },
     // 'password':{
     //     type:String,
@@ -81,7 +83,12 @@ const captainSchema = new mongoose.Schema({
 
 }) 
 
+captainSchema.index({
+  location: "2dsphere", "vehicle.vehicleType": 1 },
+  { partialFilterExpression: { status: "active" } }
+);
 captainSchema.index({ location: "2dsphere" });
+
 captainSchema.methods.genrateToken =  function(){
     const token =  jwt.sign({_id:this._id, role:'captain'},process.env.JWT_SECRET,{expiresIn: '24h'});
     return token;

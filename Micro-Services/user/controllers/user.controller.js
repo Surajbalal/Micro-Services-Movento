@@ -2,20 +2,22 @@ const userModel = require("../models/user.models");
 const blackListModel = require("../models/blackListToken.model");
 const { validationResult } = require("express-validator");
 const { createUser } = require("../services/user.service");
+const AppError = require("../utils/appError");
+const asyncHandler = require("../utils/asyncHandler");
 
-module.exports.registerUser = async (req, res, next) => {
+module.exports.registerUser = asyncHandler(async (req, res, next) => {
   console.log(req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    throw new AppError("Validation failed", "VALIDATION_ERROR", 400);
   }
   const { fullName, email, password } = req.body;
 
   const isUserAlready = await userModel.findOne({email});
 
   if(isUserAlready){
-    return res.status(400).json({message:"User already exist"})
- f }
+    throw new AppError("User already exist", "USER_EXISTS", 400);
+  }
 
   const hashPassword = await userModel.hashPassword(password);
 
@@ -27,35 +29,35 @@ module.exports.registerUser = async (req, res, next) => {
   });
   const token = user.genrateToken();
   return res.status(201).json({ token, user });
-};
-module.exports.loginUser = async (req, res, next) => {
+});
+
+module.exports.loginUser = asyncHandler(async (req, res, next) => {
   const errors = validationResult(req);
-  const { email, password } = req.body;
   if (!errors.isEmpty()) {
-    return res.status(400).json({ error: errors.array() });
+    throw new AppError("Validation failed", "VALIDATION_ERROR", 400);
   }
+  const { email, password } = req.body;
   const user = await userModel.findOne({ email }).select("+password");
   if (!user) {
-    return res.status(401).json({ message: "Invalid email or password" });
+    throw new AppError("Invalid email or password", "UNAUTHORIZED", 401);
   }
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    return res.status(401).json({ message: "Invalid email or password" });
+    throw new AppError("Invalid email or password", "UNAUTHORIZED", 401);
   }
   const token = user.genrateToken();
   res.cookie("token", token);
   return res.status(200).json({ token, user });
-};
+});
 
-module.exports.getUserProfile = async (req, res, next) => {
+module.exports.getUserProfile = asyncHandler(async (req, res, next) => {
   res.set('Cache-Control', 'no-store');
-// res.status(200).json(user);
-
   return res.status(200).json(req.user);
-};
-module.exports.logoutUser = async (req, res, next) => {
+});
+
+module.exports.logoutUser = asyncHandler(async (req, res, next) => {
   res.clearCookie("token");
   const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
   await blackListModel.create({token});
   res.status(200).json({ message: "Logout successfully" });
-}
+});

@@ -16,42 +16,71 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
+// Track in-flight refresh to prevent parallel loops
+let isRefreshing = false;
+let pendingQueue = []; // callbacks waiting for new token
+
+const processQueue = (error, token = null) => {
+  pendingQueue.forEach((cb) => (error ? cb.reject(error) : cb.resolve(token)));
+  pendingQueue = [];
+};
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status == 401 && !originalRequest._retry) {
+
+    // 🔑 KEY FIX: if the refresh-token request itself fails, don't retry — log out immediately
+    if (originalRequest.url?.includes("/auth/users/refresh-token")) {
+      localStorage.removeItem("token");
+      toast.error("Session expired. Please login again.");
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      // call api for refresh token
+
+      // If a refresh is already in flight, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          pendingQueue.push({
+            resolve: (token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(axiosInstance(originalRequest));
+            },
+            reject,
+          });
+        });
+      }
+
+      isRefreshing = true;
+
       try {
         const response = await axiosInstance.post(`/auth/users/refresh-token`);
         const newToken = response.data.token;
 
         localStorage.setItem("token", newToken);
-
-        // retry the original request
+        axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
+        processQueue(null, newToken);
         return axiosInstance(originalRequest);
-      } catch (error) {
-        // if refresh token fails, clear local storage and redirect to login
+      } catch (refreshError) {
+        processQueue(refreshError, null);
         localStorage.removeItem("token");
-      toast.error("Session expired. Please login again.");
-
-        // window.location.href = "/login";
-        return Promise.reject(error);
+        toast.error("Session expired. Please login again.");
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
-    // If not a 401 error or request already retried,
-    // forward the error to the caller
-      if (!error.config?.skipGlobalError) {
-      const message =
-        error.response?.data?.message || "Something went wrong";
 
+    // Forward non-401 errors to caller (with optional global toast)
+    if (!error.config?.skipGlobalError) {
+      const message = error.response?.data?.message || "Something went wrong";
       toast.error(message);
     }
 
     return Promise.reject(error);
-  },
-  
+  }
 );

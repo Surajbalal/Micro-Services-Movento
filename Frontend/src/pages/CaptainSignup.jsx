@@ -9,14 +9,14 @@ function CaptainSignup() {
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const inputRefs = useRef([]);
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [vehicleColor, setVehicleColor] = useState("");
-    const [vehiclePlate, setVehiclePlate] = useState("");
-    const [vehicleCapacity, setVehicleCapacity] = useState("");
-    const [vehicleType, setVehicleType] = useState("");
+    const [email, setEmail] = useState("surajbalal786@gmail.com");
+    const [password, setPassword] = useState("Sisussmm786");
+    const [firstName, setFirstName] = useState("Suraj");
+    const [lastName, setLastName] = useState("Kumar");
+    const [vehicleColor, setVehicleColor] = useState("Red");
+    const [vehiclePlate, setVehiclePlate] = useState("MH12AB1234");
+    const [vehicleCapacity, setVehicleCapacity] = useState("4");
+    const [vehicleType, setVehicleType] = useState("car");
     const [isLoading, setIsLoading] = useState(false);
 
     const navigate = useNavigate();

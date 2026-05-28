@@ -4,6 +4,8 @@ const amqp = require("amqplib");
 const blackListTokenModel = require("../models/blackListToken.model");
 const userModel = require("../models/user.models");
 const config = require('../config/config')
+const AppError = require("../utils/appError");
+// const { sendMessageToSocketId } = require("../socket");
 let channel;
 
 
@@ -22,7 +24,7 @@ async function connectRabbitMQ() {
 // Publish a message to a specific queue
 async function publishToQueue(queue, message) {
   const correlationId = uuidv4();
-  if (!channel) throw new Error("Channel not connected");
+  if (!channel) throw new AppError("Channel not connected", "RABBITMQ_ERROR", 500);
 
   const replyQueue = await channel.assertQueue("", { exclusive: true });
 
@@ -33,7 +35,7 @@ async function publishToQueue(queue, message) {
 
   const response = await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error("RPC Timeout: No reply received from consumer"));
+      reject(new AppError("RPC Timeout: No reply received from consumer", "RABBITMQ_TIMEOUT", 504));
     }, 5000);
 
     channel.consume(
@@ -53,7 +55,7 @@ async function publishToQueue(queue, message) {
 // Subscribe to a specific queue
 async function subscribeToQueue(queue) {
   if (!channel) {
-    throw new Error("RabbitMQ channel is not initialized");
+    throw new AppError("RabbitMQ channel is not initialized", "RABBITMQ_ERROR", 500);
   }
   await channel.assertQueue(queue);
   channel.consume(queue, async (msg) => {
@@ -72,6 +74,14 @@ async function subscribeToQueue(queue) {
       response = await userModel.findByIdAndUpdate(data._id, {
         $set: data.updateData,
       });
+    } else if (queue === "notification-ride-ended") {
+      const { sendMessageToSocketId } = require("../socket"); 
+      const user = await userModel.findById(data.userId).select("socketId").lean();
+
+      if (user?.socketId) {
+        sendMessageToSocketId(user?.socketId, "ride-ended", data);
+      }
+      //  response = { success: true };
     } else if (queue === "USER_CREATED") {
       try {
         const existingUser = await userModel.findOne({ email: data.email });
@@ -94,7 +104,7 @@ async function subscribeToQueue(queue) {
     } else if (queue === "USER_UPDATED") {
       try {
         if (!data.userId || !data.email) {
-          throw new Error("Invalid event data");
+          throw new AppError("Invalid event data", "BAD_REQUEST", 400);
         }
         const result = await userModel.updateOne(
           { _id: data.userId },

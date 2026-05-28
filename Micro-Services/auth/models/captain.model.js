@@ -26,6 +26,7 @@ const captainSchema = new mongoose.Schema({
         default: false
     }
 });
+captainSchema.index({ email: 1 });
 
 captainSchema.methods.genrateAcessToken = function(isNewUser = false, sessionId) {
     const payload = { _id: this._id, role: this.role };

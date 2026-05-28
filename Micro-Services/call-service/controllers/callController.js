@@ -1,5 +1,7 @@
 const twilio = require("twilio");
 const config = require("../config/config");
+const AppError = require("../utils/appError");
+const asyncHandler = require("../utils/asyncHandler");
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -7,43 +9,31 @@ const client = twilio(
 );
 
 // ✅ 1. Initiate Call (User clicks "Call Driver")
-exports.initiateCall = async (req, res) => {
+exports.initiateCall = asyncHandler(async (req, res, next) => {
   const { userNumber, captainNumber } = req.body;
 
   if (!userNumber || !captainNumber) {
-    return res.status(400).json({
-      success: false,
-      message: "Both numbers are required",
-    });
+    throw new AppError("Both numbers are required", "BAD_REQUEST", 400);
   }
 
-  try {
-    const call = await client.calls.create({
-      url: `${config.BASE_URL}/api/call/connect?to=${captainNumber}`,
-      to: userNumber, // first call user
-      from: process.env.TWILIO_PHONE_NUMBER,
+  const call = await client.calls.create({
+    url: `${config.BASE_URL}/api/call/connect?to=${captainNumber}`,
+    to: userNumber, // first call user
+    from: process.env.TWILIO_PHONE_NUMBER,
 
-      statusCallback: `${process.env.BASE_URL}/api/call/status`,
-      statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-    });
+    statusCallback: `${process.env.BASE_URL}/api/call/status`,
+    statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+  });
 
-    return res.json({
-      success: true,
-      message: "Call initiated",
-      callSid: call.sid,
-    });
-  } catch (error) {
-    console.error("Call Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  return res.json({
+    success: true,
+    message: "Call initiated",
+    callSid: call.sid,
+  });
+});
 
 // ✅ 2. Connect Call (TwiML)
-exports.connectCall = (req, res) => {
+exports.connectCall = asyncHandler(async (req, res, next) => {
   const captainNumber = req.query.to;
 
   const VoiceResponse = twilio.twiml.VoiceResponse;
@@ -53,13 +43,13 @@ exports.connectCall = (req, res) => {
 
   res.type("text/xml");
   res.send(twiml.toString());
-};
+});
 
 // ✅ 3. Call Status Webhook
-exports.callStatus = (req, res) => {
+exports.callStatus = asyncHandler(async (req, res, next) => {
   console.log("📞 Call Status:", req.body);
 
   // You can store this in DB later
 
   res.sendStatus(200);
-};
+});

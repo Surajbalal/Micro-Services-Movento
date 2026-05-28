@@ -24,6 +24,7 @@ const config = require('../config/config');
     
   }
  })
+ userSchema.index({ email: 1 });
 
  userSchema.methods.genrateAcessToken = function(isNewUser = false,sessionId){
     const payload = { _id: this._id, role: this.role };

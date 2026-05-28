@@ -1,7 +1,7 @@
 const { Server } = require("socket.io");
 const { createClient } = require("redis");
 const { createAdapter } = require("@socket.io/redis-adapter");
-const { publishToQueue } = require("./services/rabbit");
+const { publishToQueue } = require("./services/rabbitmq/publish");
 
 let io;
 
@@ -25,22 +25,60 @@ async function initializeSocket(server) {
     console.log("Client connected:", socket.id);
 
     // join event (user or captain)
-    socket.on("join", async ({ userType, userId }) => {
+   socket.on("join", async ({ userType, userId }) => {
 
-      const queue = userType === "user" ? "update-user" : "captain-update";
+  try {
 
-      await publishToQueue(queue, {
-        _id: userId,
-        updateData: { socketId: socket.id }
-      });
+    // personal stable room
+    socket.join(`${userType}:${userId}`);
 
+    console.log(
+      `Socket ${socket.id} joined ${userType}:${userId}`
+    );
+
+    const queue =
+      userType === "user"
+        ? "update-user"
+        : "captain-update";
+
+    await publishToQueue(queue, {
+      _id: userId,
+      updateData: {
+        socketId: socket.id
+      }
     });
 
+  } catch (err) {
+
+    console.error("Join error:", err);
+
+    socket.emit("error", {
+      message: "Join failed"
+    });
+
+  }
+
+});
+
     // ride room
-    socket.on("join-ride-room", (rideId) => socket.join(rideId));
+    socket.on("join-ride-room", async (rideId) => {
+      await socket.join(String(rideId));
+      console.log(`Socket ${socket.id} joined ride room ${rideId}`);
+    });
 
     socket.on("leave-ride-room", (rideId) => socket.leave(rideId));
+socket.on("debug-room", (rideId) => {
+    const roomName = String(rideId);
 
+  const room = io.sockets.adapter.rooms.get(roomName);
+
+  if (room) {
+    console.log("Users count:", room.size);
+    console.log("Socket IDs:", [...room]);
+  } else {
+    console.log("Room does not exist");
+  }
+});
     // captain location update
     socket.on("update-captain-location", async ({ location, captainId, rideId }) => {
 

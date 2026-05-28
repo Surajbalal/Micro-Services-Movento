@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 export default function useRideRoom(socket, rideId) {
-console.log("this is inside the useRideRoom",socket,rideId,socket.id)
+console.log("this is inside the useRideRoom",socket,rideId,socket?.id)
 
 
   useEffect(() => {

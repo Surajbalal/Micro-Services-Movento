@@ -1,7 +1,7 @@
 require('dotenv').config();
 const {v4: uuidv4} = require('uuid')
 const amqp = require('amqplib');
-
+const AppError = require("../utils/appError");
 
 let channel;
 const RABBITMQ_URL = process.env.RABBIT_URL
@@ -22,7 +22,7 @@ async function connectRabbitMQ() {
 
 // Publish a message to a specific queue
 async function publishToQueue(queue, message) {
-    if (!channel) throw new Error('Channel not connected');
+    if (!channel) throw new AppError('Channel not connected', "RABBITMQ_ERROR", 500);
     console.log("publish to",queue);
     const correlationId = uuidv4();
     const replyQueue = await channel.assertQueue('', { exclusive: true });
@@ -56,11 +56,19 @@ async function publishToQueue(queue, message) {
 
     return await responsePromise;
 }
+
+// publishEvent → fire-and-forget pattern → no response required.
+
+function publishEvent(queue, message) {
+  if (!channel) throw new Error("Channel not connected");
+
+  channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)));
+}
     
 // Subscribe to a specific queue
 async function subscribeToQueue(queue) {
     if (!channel) {
-        throw new Error('RabbitMQ channel is not initialized');
+        throw new AppError('RabbitMQ channel is not initialized', "RABBITMQ_ERROR", 500);
     }
 
     await channel.assertQueue(queue);
@@ -101,5 +109,6 @@ async function subscribeToQueue(queue) {
 module.exports = {
     publishToQueue,
     subscribeToQueue,
-    connectRabbitMQ
+    connectRabbitMQ,
+    publishEvent
 };

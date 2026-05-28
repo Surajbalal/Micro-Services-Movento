@@ -26,9 +26,73 @@ function Home() {
   const searchingPanelRef = useRef(null);
   const vehicleSearchRef = useRef(null);
   const driverWaitingRef = useRef(null);
+    const [isRideAccepted, setIsRideAccepted] = useState(false);
+  const [activeField, setActiveField] = useState(null);
+  const [isLocationSelected, setIsLocationSelected] = useState(false);
+  const [fare, setfare] = useState({});
+  const [rideData, setRideData] = useState({});
+  const [vehicleType, setVehicleType] = useState("car");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useContext(UserDataContext);
+  const { sendMessage, socket } = useContext(SocketContext);
+
+  const token = localStorage.getItem("token");
+
 
   const [isVehicalPanelOpen, setIsVehicalPanelOpen] = useState(false);
+useEffect(() => {
+  const fetchRide = async () => {
+    try {
+      const response = await axiosInstance.get("/rides/get-ride");
+       if (!response.data?._id) return;
 
+    if (response.data.status === "ongoing") {
+  setIsDriverWaitingOpen(false);
+    setIsRideAccepted(false);
+
+    navigate("/riding", { state: {  ride: response.data } });
+    return;
+    }
+      if (response.data && response.data._id) {
+        setRideData(response.data);
+        setIsDriverWaitingOpen(true);  
+        setIsRideAccepted(true);
+      }
+    } catch (error) {
+      console.log("No active ride found");
+    }
+  };
+
+  fetchRide();
+}, []);
+
+useEffect(() => {
+  if (!socket || !rideData?._id) return;
+
+  const joinRoom = () => {
+    sendMessage("join-ride-room", rideData._id);
+    setTimeout(() => {
+      sendMessage("debug-room", rideData._id);
+    }, 500);
+  };
+
+  if (socket.connected) {
+    joinRoom();
+  }
+
+  socket.on("connect", joinRoom);
+
+  return () => {
+    socket.off("connect", joinRoom);
+  };
+}, [socket, rideData?._id]);
+
+
+
+
+
+  
   // Debug log for state changes
   useEffect(() => {
     console.log("isVehicalPanelOpen changed to:", isVehicalPanelOpen);
@@ -46,29 +110,31 @@ function Home() {
   useEffect(() => {
     console.log("isDriverWaitingOpen changed to:", isDriverWaitingOpen);
   }, [isDriverWaitingOpen]);
-  const [isRideAccepted, setIsRideAccepted] = useState(false);
-  const [activeField, setActiveField] = useState(null);
-  const [isLocationSelected, setIsLocationSelected] = useState(false);
-  const [fare, setfare] = useState({});
-  const [rideData, setRideData] = useState({});
-  const [vehicleType, setVehicleType] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const { user } = useContext(UserDataContext);
-  const { sendMessage, socket } = useContext(SocketContext);
-
-  const token = localStorage.getItem("token");
 
   useEffect(() => {
     if (user && user._id && socket) {
-      sendMessage("join", { userType: "user", userId: user._id });
+      const joinUser = () => {
+        sendMessage("join", { userType: "user", userId: user._id });
+      };
+
+      if (socket.connected) {
+        joinUser();
+      }
+
+      socket.on("connect", joinUser);
+
+      return () => {
+        socket.off("connect", joinUser);
+      };
     }
   }, [user, socket]);
+
 useEffect(() => {
   if (!socket) return;
 
   const handleRideConfirm = (ride) => {
-    console.log("🔥 ride-confirm received", ride);
+    console.log(" ride-confirm received", ride);
+
 
     // set ride data
     setRideData(ride);
@@ -84,7 +150,8 @@ useEffect(() => {
   };
 
   const handleRideStarted = (ride) => {
-    console.log("🚀 ride-started received", ride);
+    
+    console.log(" ride-started received", ride);
 
     setIsDriverWaitingOpen(false);
     setIsRideAccepted(false);
@@ -92,14 +159,49 @@ useEffect(() => {
     navigate("/riding", { state: { ride } });
   };
 
+  const handleRideCancelled = (data) => {
+    console.log("ride-cancelled received", data);
+    setRideData({});
+    setIsDriverWaitingOpen(false);
+    setIsRideAccepted(false);
+    setIsPanelOpen(false);
+    alert(`Ride cancelled because of: ${data.reason}`|| `Ride Cancelled`);
+  };
+
   // attach listeners
-  socket.on("ride-confirm", handleRideConfirm);
+  // socket.on("ride-confirm", (data)=>{
+  //   console.log("🔥 ride-confirm received", data);
+
+
+  //   // set ride data
+  //   setRideData(data);
+
+  //   // close all other panels
+  //   setIsVehicalPanelOpen(false);
+  //   setIsSearchingPanelOpen(false);
+  //   setIsVehicleSearchOpen(false);
+
+  //   // open waiting panel
+  //   setIsRideAccepted(true);
+  //   setIsDriverWaitingOpen(true);
+  // });
+  socket.on("ride-ended", (data) => {
+  console.log(" ride-ended received", data);
+  setRideData({});
+  setIsDriverWaitingOpen(false);
+  setIsRideAccepted(false);
+  setIsPanelOpen(false);
+  alert(data.message);
+});
+  socket.on("ride-confirm",handleRideConfirm);
   socket.on("ride-started", handleRideStarted);
+  socket.on("ride-cancelled", handleRideCancelled);
 
   // cleanup (VERY IMPORTANT)
   return () => {
     socket.off("ride-confirm", handleRideConfirm);
     socket.off("ride-started", handleRideStarted);
+    socket.off("ride-cancelled", handleRideCancelled);
   };
 
 }, [socket, navigate]);
@@ -139,6 +241,8 @@ useEffect(() => {
       }
     } catch (error) {
       console.error("Error creating ride:", error);
+      setIsVehicleSearchOpen(false);
+      setIsVehicalPanelOpen(true);
     } finally {
       setIsCreatingRide(false);
     }
@@ -380,7 +484,9 @@ useEffect(() => {
           fare={fare}
           setVehicleType={setVehicleType}
           setIsVehicalPanelOpen={setIsVehicalPanelOpen}
-          setIsSearchingPanelOpen={setIsSearchingPanelOpen}
+          setIsVehicleSearchOpen={setIsVehicleSearchOpen}
+          // setIsSearchingPanelOpen={setIsSearchingPanelOpen}
+          createRide={createRide}
         />
       </div>
 
@@ -390,7 +496,7 @@ useEffect(() => {
         className="fixed z-50 bottom-0 left-0 right-0 md:left-12 md:right-auto md:bottom-auto md:top-[120px] md:h-fit md:max-h-[calc(100vh-140px)] md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.2)] md:shadow-2xl overflow-y-auto w-full md:border border-gray-100"
       >
         <Searching
-          createRide={createRide}
+          // createRide={createRide}
           isCreatingRide={isCreatingRide}
           pickup={pickup}
           fare={fare}
@@ -429,7 +535,7 @@ useEffect(() => {
         />
       </div>
 
-      {/* Floating button for accepted rides */}
+      {/* Floating button to cehck the curretn ride */}
       {isRideAccepted && !isDriverWaitingOpen && (
         <button
           onClick={() => setIsDriverWaitingOpen(true)}

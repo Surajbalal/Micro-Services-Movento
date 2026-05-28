@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import CaptainDetails from "../Components/CaptainDetails";
 import RidePopUp from "../Components/RidePopUp";
@@ -20,6 +20,8 @@ function CaptainHome() {
   const ridePopupPanelRef = useRef(null);
   const { sendMessage, socket } = useContext(SocketContext);
   const { captain } = useContext(CaptainDataContext);
+  const [captainStats,setCaptainStats] = useState({})
+  const [isCaptainDetailLoading,setIsCaptainDetailLoading] = useState(false)
 
   const [isAcceptingRide, setIsAcceptingRide] = useState(false);
   const callRef = useRef(null); // ref to Call component to trigger initiateCall from captain side
@@ -45,31 +47,127 @@ function CaptainHome() {
       setIsAcceptingRide(false);
     }
   }
+    const navigate = useNavigate();
+  useEffect(() => {  
+  
+  const fetchRide = async () => {
+      try {
+        const response = await captainAxiosInstance.get("/rides/get-ride");
+        
+    if (!response.data?._id) return;
+
+    if (response.data.status === "ongoing") {
+
+      console.log("navigating");
+
+      navigate("/captain-riding", {
+        state: { ride: response.data }
+      });
+
+      return;
+    }
+
+    setRide(response.data);
+    setIsConfirmPopUpOpen(true);
+    setIsRideAccepted(true);
+
+        
+      } catch (error) {
+        console.log("No active ride found");
+      }
+    };
+  
+    fetchRide();
+  }, []);
+  useEffect(() => {
+    if (!socket || !ride?._id) return;
+  
+    const joinRoom = () => {
+      sendMessage("join-ride-room", ride._id);
+      setTimeout(() => {
+        sendMessage("debug-room", ride._id);
+      }, 500);
+    };
+  
+    if (socket.connected) {
+      joinRoom();
+    }
+  
+    socket.on("connect", joinRoom);
+  
+    return () => {
+      socket.off("connect", joinRoom);
+    };
+  }, [socket, ride?._id]);
+  
+  useEffect(()=>{
+    const fetchCaptainStats = async()=>{
+      setIsCaptainDetailLoading(true);
+    const response = await captainAxiosInstance.get('/rides/get-captain-stats')
+    if(response.status==200){
+      setCaptainStats(response.data);
+    }
+    setIsCaptainDetailLoading(false);
+    console.log("captain stats",response.data);}
+    fetchCaptainStats();
+  },[captain?._id]);
 
   useEffect(() => {
     if (!captain || !sendMessage) return;
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      console.error("Geolocation is not supported by this browser.");
+      return;
+    }
 
-    const interval = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setCaptainLocation(location);
-          sendMessage("update-captain-location", { captainId: captain._id, location });
-        },
-        (error) => console.error("Error getting location:", error)
-      );
-    }, 10000);
-    return () => clearInterval(interval);
+    console.log("Requesting captain location...");
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        console.log(" Captain location updated:", location);
+        setCaptainLocation(location);
+        sendMessage("update-captain-location", { captainId: captain._id, location });
+      },
+      (error) => {
+        console.error(" Error getting captain location:", error.message);
+        alert(`Location Error: ${error.message}. Please enable location services in your browser!`);
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [captain?._id, sendMessage]);
 
   useEffect(() => {
     if (!socket) return;
-    socket.on("new-ride", (data) => {
+    
+    const handleNewRide = (data) => {
       setRide({ ...data.ride, user: data.user });
       setIsRidePopupOpen(true);
-    });
-    return () => socket.off("new-ride");
+    };
+
+    const handleRideCancelled = (data) => {
+      console.log(" ride-cancelled received", data);
+      setRide(null);
+      setIsRidePopupOpen(false);
+      setIsConfirmPopUpOpen(false);
+      setIsRideAccepted(false);
+      alert(`Ride cancelled: ${data.reason || 'No reason provided'}`);
+    };
+
+    socket.on("ride-ended", (data) => {
+      console.log("ride-ended received", data);
+      setRide({});
+      alert(data.message);
+});
+
+
+    socket.on("new-ride", handleNewRide);
+    socket.on("ride-cancelled", handleRideCancelled);
+    
+    return () => {
+      socket.off("new-ride", handleNewRide);
+      socket.off("ride-cancelled", handleRideCancelled);
+    };
   }, [socket]);
 
   useEffect(()=>{
@@ -134,7 +232,7 @@ function CaptainHome() {
 
       {/* Captain Profile Summary - Floating Bottom Left on Desktop, Bottom Sheet on Mobile */}
       <div className="absolute bottom-0 left-0 right-0 md:bottom-8 md:left-8 md:right-auto md:w-[400px] bg-white md:bg-white/95 md:backdrop-blur-xl md:rounded-3xl rounded-t-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.1)] md:shadow-2xl border-t md:border border-gray-100 z-20 overflow-hidden">
-        <CaptainDetails />
+        <CaptainDetails stats={captainStats} isCaptainDetailLoading={isCaptainDetailLoading}/>
       </div>
 
       {/* Modals: New Ride Request */}

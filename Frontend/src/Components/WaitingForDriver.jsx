@@ -1,12 +1,53 @@
 import React, { useState } from 'react'
 import Call from './Call';
+import { useContext } from 'react';
+import { SocketContext } from '../Context/SocketContext';
+import axiosInstance from '../api/axiosInstance';
+import PaymentButton from './PaymentButton';
 
 function WaitingForDriver(props) {
   const [paymentMode, setPaymentMode] = useState('cash'); // 'cash' | 'online'
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+ const { sendMessage, socket } = useContext(SocketContext);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelStep, setCancelStep] = useState(1);
+  const [cancelReason, setCancelReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
+  const defaultReasons = ["Driver is too far", "Changed my mind", "Wait time is too long", "Other"];
 
   const handleMinimize = () => {
     props.setIsDriverWaitingOpen(false);
+  };
+
+  const handleCancelRide = async () => {
+    try {
+      const response = await axiosInstance.post('/rides/cancel', {
+        rideId: props.rideData?._id,
+        reason: cancelReason,
+        note: otherReason
+      });
+      if (response.status === 200) {
+        setShowCancelModal(false);
+        setCancelStep(1);
+        setCancelReason("");
+        setOtherReason("");
+        props.setIsDriverWaitingOpen(false);
+        props.setIsRideAccepted(false);
+        
+      }
+    } catch (error) {
+      console.error("Error cancelling ride:", error);
+      alert(error.response?.data?.message || "Failed to cancel ride.");
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setTimeout(() => {
+      setCancelStep(1);
+      setCancelReason("");
+      setOtherReason("");
+    }, 300);
   };
 
   return (
@@ -119,6 +160,82 @@ function WaitingForDriver(props) {
         </div>
       </div>
 
+      {/* Cancel Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6 shadow-xl animate-slide-up relative">
+            <button 
+              onClick={closeCancelModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 focus:outline-none"
+            >
+              <i className="ri-close-line text-2xl"></i>
+            </button>
+            
+            {cancelStep === 1 ? (
+              <>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Cancel Ride</h3>
+                <p className="text-sm text-gray-500 mb-5">Select reason (required)</p>
+
+                <div className="space-y-3 mb-6">
+                  {defaultReasons.map((reason, index) => (
+                    <button 
+                      key={index} 
+                      onClick={() => {
+                        setCancelReason(reason);
+                        setCancelStep(2);
+                      }}
+                      className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-black transition-all focus:outline-none text-left"
+                    >
+                      <span className="text-sm font-medium text-gray-900">{reason}</span>
+                      <i className="ri-arrow-right-s-line text-gray-400 text-lg"></i>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <button 
+                    onClick={() => setCancelStep(1)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none"
+                  >
+                    <i className="ri-arrow-left-line text-gray-600"></i>
+                  </button>
+                  <h3 className="text-xl font-bold text-gray-900">Add Feedback</h3>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-lg mb-5 border border-gray-100">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Selected Reason</p>
+                  <p className="text-sm font-medium text-gray-900">{cancelReason}</p>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-sm text-gray-500 mb-2">
+                    {cancelReason === 'Other' ? 'Please specify (required)' : 'Additional notes (optional)'}
+                  </p>
+                  <textarea 
+                    value={otherReason}
+                    onChange={(e) => setOtherReason(e.target.value)}
+                    placeholder={cancelReason === 'Other' ? "Write your reason here..." : "Tell us more about why you're cancelling..."}
+                    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-black resize-none h-28 text-sm transition-colors"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button 
+                    onClick={handleCancelRide}
+                    disabled={cancelReason === 'Other' && !otherReason.trim()}
+                    className="w-full py-4 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-all focus:outline-none shadow-sm active:scale-[0.98] disabled:opacity-50"
+                  >
+                    Submit Cancellation
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Payment Mode Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm">
@@ -164,15 +281,27 @@ function WaitingForDriver(props) {
       )}
 
       {/* Bottom Action Buttons */}
-      <div className="flex gap-3 mt-2">
+      <div className="flex gap-3 mt-2 w-full">
+        {/* Cancel Ride Button */}
+        <button
+          onClick={() => setShowCancelModal(true)}
+          className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all font-medium text-sm focus:outline-none border-2 border-red-100"
+          title="Cancel Ride"
+        >
+          <i className="ri-close-circle-line text-lg"></i>
+          <span className="hidden sm:inline">Cancel</span>
+        </button>
+
         {/* Call Captain Button */}
         <Call
           rideId={props.rideData?._id}
-          callerId={props.rideData?.user?._id}
+          callerId={props.rideData?.user}
           receiverId={props.rideData?.captain?._id}
           renderTrigger={(onCall) => (
             <button
-              onClick={onCall}
+              onClick={() => {
+                onCall();
+              }}
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-gray-200 hover:border-black hover:bg-gray-50 transition-all font-medium text-sm text-gray-900 focus:outline-none"
             >
               <i className="ri-phone-line text-lg"></i>
@@ -183,12 +312,18 @@ function WaitingForDriver(props) {
 
         {/* Pay Now — only shown when online is selected */}
         {paymentMode === 'online' && (
-          <button
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 transition-all font-semibold text-sm text-white focus:outline-none shadow-sm"
-          >
-            <i className="ri-bank-card-line text-lg"></i>
-            Pay ₹{props.rideData?.fare}
-          </button>
+          // <button
+          //   className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 transition-all font-semibold text-sm text-white focus:outline-none shadow-sm"
+          // >
+          //   <i className="ri-bank-card-line text-lg"></i>
+          //   Pay ₹{props.rideData?.fare}
+          // </button>
+          <PaymentButton
+   
+          rideId={props.rideData?._id}
+          userId={props.rideData?.user}
+          amount={props.rideData?.fare}
+          />
         )}
       </div>
 

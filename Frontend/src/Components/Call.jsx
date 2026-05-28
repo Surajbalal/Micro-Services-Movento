@@ -3,7 +3,7 @@ import { SocketContext } from '../Context/SocketContext';
 import { joinCall, leaveCall } from '../services/agora.service';
 
 const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) => {
-  const { sendMessage, receiveMessage } = useContext(SocketContext);
+  const { sendMessage, receiveMessage,socket } = useContext(SocketContext);
   const [callState, setCallState] = useState('idle'); // 'idle' | 'calling' | 'incoming' | 'connected'
   // Using a universally supported mp3 ringtone URL
   const audioRef = useRef(new Audio("https://actions.google.com/sounds/v1/alarms/phone_ringing.ogg"));
@@ -13,7 +13,10 @@ const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) =
     audioRef.current.loop = true;
     
     // Safety check - join socket room for signaling
+    console.log("rideId", rideId);
+    console.log("sendMessage", sendMessage);
     if (rideId && sendMessage) {
+      console.log("join-ride-room", rideId);
       sendMessage("join-ride-room", rideId);
     }
 
@@ -28,14 +31,18 @@ const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) =
     audioRef.current.currentTime = 0;
   };
 
+
   useEffect(() => {
     if (!receiveMessage) return;
-
     const unsubs = [];
+    // socket.on("incoming-call", (data) => {
+    //   console.log("incoming-call", data);
+    // })
 
     // When someone calls me
     unsubs.push(
       receiveMessage("incoming-call", (data) => {
+        console.log("incoming-call", data);
         if (data.rideId === rideId && data.receiverId === callerId) {
           setCallState('incoming');
           audioRef.current.play().catch(e => console.log("Audio blocked by browser:", e));
@@ -85,11 +92,13 @@ const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) =
   }, [receiveMessage, rideId, callerId]);
 
   const initiateCall = () => {
+    console.log("inside initiateCall",rideId,callerId,receiverId);
     if (!rideId || !callerId || !receiverId) return console.warn("Missing Call Data");
     setCallState('calling');
+  
     audioRef.current.play().catch(e => console.log("Audio blocked by browser:", e));
     sendMessage("call-user", { rideId, callerId, receiverId });
-
+     sendMessage("debug-room", {rideId});
     // Auto hangup after 30 seconds of ringing
     setTimeout(() => {
       setCallState((current) => {

@@ -55,6 +55,30 @@ const rideSchema = mongoose.Schema({
         enum: ['pending','accepted','ongoing','completed','cancelled'],
         default: 'pending'
     },
+
+  cancellation: {
+    reason: {
+      type: String, // e.g. "user_changed_mind", "driver_no_show"
+    },
+    note: {
+      type: String // optional free text from user
+    },
+    cancelledBy: {
+      type: String,
+      enum: ['user', 'captain', 'system']
+    },
+    cancelledAt: {
+      type: Date
+    }
+  },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5
+  },
+  feedback: {
+    type: String
+  },
     duration:{
         type:Number //in sec
     },
@@ -76,4 +100,12 @@ const rideSchema = mongoose.Schema({
         required: true,
     }
 })
+rideSchema.index(
+  { captain: 1 },
+  {partialFilterExpression: { status: { $in: ["ongoing", "accepted"] } } }
+);
+rideSchema.index(
+  { user: 1 },
+  { partialFilterExpression: { status: { $in: ["ongoing", "accepted"] } } }
+);
 module.exports = mongoose.model('rideModel',rideSchema);
