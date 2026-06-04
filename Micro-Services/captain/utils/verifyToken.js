@@ -18,17 +18,19 @@ const verifyKey = async(token)=>{
         return decoded
         
     } catch (error) {
+    console.log("VERIFY ERROR NAME:", error.name);
+    console.log("VERIFY ERROR:", error);
 
-         if (error.name === "TokenExpiredError") {
-      throw new Error("Token expired");
-    }
-
+ if (error.name === "JsonWebTokenError") {
+    console.log("JWT ERROR:", error);
+    throw error;
+}
     if (error.name === "JsonWebTokenError") {
-      throw new Error("Invalid token");
+        throw new Error("Invalid token");
     }
 
-    throw new Error("Authentication failed");
-  }
+    throw error;
+}
         
     
 }

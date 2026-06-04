@@ -1,5 +1,5 @@
 const rideModel = require("../models/ride.model");
-const { sendMessageToSocketId } = require("../socket");
+const { sendMessageToSocketId } = require("../socket/socket");
 const mapService = require("./maps.service");
 const crypto = require("crypto");
 const { publishToQueue, publishEvent } = require("./rabbit");
@@ -15,7 +15,11 @@ module.exports.generateOtp = () => {
 
 module.exports.getFare = async (pickup, destination) => {
   if (!pickup || !destination) {
-    throw new AppError("Pickup and destination are required", "BAD_REQUEST", 400);
+    throw new AppError(
+      "Pickup and destination are required",
+      "BAD_REQUEST",
+      400,
+    );
   }
 
   const destinationTime = await mapService.getDistanceTime(pickup, destination);
@@ -108,12 +112,15 @@ module.exports.confirmRide = async (rideId, captainId) => {
     throw new AppError("Ride not found", "NOT_FOUND", 404);
   }
   // update captain isAvailable to false
-  await publishToQueue("captain-update", { _id: ride.captain ,updateData:{isAvailable:false}});
+  await publishToQueue("captain-update", {
+    _id: ride.captain,
+    updateData: { isAvailable: false },
+  });
 
   // fetch user and captain
   const captain = await publishToQueue("get-captain", { _id: ride.captain });
   const user = await publishToQueue("get-user", { _id: ride.user });
- 
+
   const rideData = ride.toObject();
   const result = {
     ...rideData,
@@ -155,69 +162,93 @@ module.exports.startRide = async ({ rideId, otp }) => {
   // Attach user and captain
   rideData.user = user;
   rideData.captain = captain;
+  console.log(`--------------user:${user._id}-------------------`)
 
   // Send updated ride with full data
-  sendMessageToSocketId(user.socketId, "ride-started", rideData);
+  sendMessageToSocketId(`user:${user._id}`, "ride-started", rideData);
 
   return rideData;
 };
 module.exports.endRide = async ({ rideId, captain }) => {
-    const session = await mongoose.startSession();
+  const session = await mongoose.startSession();
   try {
     if (!rideId) {
-    throw new AppError("RideId is required", "BAD_REQUEST", 400);
-  }
+      throw new AppError("RideId is required", "BAD_REQUEST", 400);
+    }
 
-  session.startTransaction();
-  const ride = await rideModel
-    .findOne({ _id: rideId, captain: captain._id })
-    .session(session);
+    session.startTransaction();
+    const ride = await rideModel
+      .findOne({ _id: rideId, captain: captain._id })
+      .session(session);
 
-  if (!ride) {
-    throw new AppError("Ride not found", "NOT_FOUND", 404);
-  }
+    if (!ride) {
+      throw new AppError("Ride not found", "NOT_FOUND", 404);
+    }
 
-  if (ride.status !== "ongoing") {
-    throw new AppError("Ride not ongoing", "INVALID_STATE", 400);
-  }
+    if (ride.payment.status !== "paid") {
+      throw new AppError("Payment not completed", "INVALID_STATE", 400);
+    }
 
-  ride.status = "completed";
-  await ride.save({ session });
+    if (ride.status !== "ongoing") {
+      throw new AppError("Ride not ongoing", "INVALID_STATE", 400);
+    }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  console.log("check is this working or not", { captainId: captain._id, date: today });
-  await CaptainDailyStatsModel.updateOne(
-    { captainId: captain._id, date: today },
-    {
-      $inc: {
-        totalRides: 1,
-        totalEarnings: ride.fare,
-        totalDistanceMeters: ride.distance,
+    ride.status = "completed";
+    await ride.save({ session });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    console.log("check is this working or not", {
+      captainId: captain._id,
+      date: today,
+    });
+    await CaptainDailyStatsModel.updateOne(
+      { captainId: captain._id, date: today },
+      {
+        $inc: {
+          totalRides: 1,
+          totalEarnings: ride.fare,
+          totalDistanceMeters: ride.distance,
+        },
       },
-    },
-    { upsert: true, session },
-  );
+      { upsert: true, session },
+    );
 
-  await session.commitTransaction();
-  session.endSession();
-   publishToQueue("captain-update", { _id: ride.captain ,updateData:{isAvailable:true}}).catch(err => {
-  console.error("Queue error:", err);
+    await session.commitTransaction();
+    session.endSession();
+    publishToQueue("captain-update", {
+      _id: ride.captain,
+      updateData: { isAvailable: true },
+    }).catch((err) => {
+      console.error("Queue error:", err);
+    });
+    // publishEvent("notification-ride-ended", {
+    //   captainId: captain._id,
+    //   userId: ride.user,
+    //   rideId: ride._id,
+    //   message: `your ride has been completed successfully`,
+    // });
 
+    sendMessageToSocketId(`captain:${captain._id}`, "ride-ended", {
+      rideId: ride._id,
+      message: `your ride has been completed successfully`,
+    });
+    sendMessageToSocketId(`user:${ride.user}`, "ride-ended", {
+      rideId: ride._id,
+      message: `your ride has been completed successfully`,
+    });
 
-});
-publishEvent("notification-ride-ended", {captainId: captain._id,userId:ride.user,rideId:ride._id, message:`your ride has been completed successfully`})
-
-  return ride;
-    
+    return ride;
   } catch (error) {
-     await session.abortTransaction();
+    await session.abortTransaction();
     console.error(error);
+    if(error instanceof AppError){
+      throw error;
+    }
     throw new AppError("Failed to end ride", "INTERNAL_SERVER_ERROR", 500);
-    
-  }finally {
-  session.endSession(); 
-}
+  } finally {
+    session.endSession();
+  }
 };
 module.exports.getCaptainInTheRadius = async (lat, lng, vehicleType) => {
   const MAX_RETRIES = 3;
@@ -248,7 +279,9 @@ module.exports.getRide = async (query) => {
     .findOne({
       $or: [{ user: query.userId }, { captain: query.captainId }],
       status: { $in: ["accepted", "ongoing"] },
-    }).select("+otp").lean();
+    })
+    .select("+otp")
+    .lean();
   if (!rideData) {
     throw new AppError("Ride not found", "NOT_FOUND", 404);
   }
@@ -280,9 +313,7 @@ module.exports.cancelRide = async ({
   if (!rideId) {
     throw new AppError("Ride ID is required", "INVALID_REQUEST", 400);
   }
-  const ride = await rideModel
-    .findById(rideId)
-    .lean();
+  const ride = await rideModel.findById(rideId).lean();
   if (!ride) {
     throw new AppError("Ride not found", "NOT_FOUND", 404);
   }
@@ -301,11 +332,11 @@ module.exports.cancelRide = async ({
       403,
     );
   } else if (
-  console.log(cancelledBy),
-  console.log(ride.captain),
-  console.log(cancellerData._id.toString()),
+    (console.log(cancelledBy),
+    console.log(ride.captain),
+    console.log(cancellerData._id.toString()),
     cancelledBy === "captain" &&
-    ride.captain.toString() !== cancellerData._id.toString()
+      ride.captain.toString() !== cancellerData._id.toString())
   ) {
     throw new AppError(
       "You are not authorized to cancel this ride",
@@ -314,25 +345,25 @@ module.exports.cancelRide = async ({
     );
   }
 
-
-  const updateRide = await rideModel.findOneAndUpdate({
-    _id: rideId,
-   status: {$in: ["pending","accepted"]}
-  },{
-     status: "cancelled",
+  const updateRide = await rideModel.findOneAndUpdate(
+    {
+      _id: rideId,
+      status: { $in: ["pending", "accepted"] },
+    },
+    {
+      status: "cancelled",
       cancellation: {
-    reason: reason || "other",
-    note: note || "",
-    cancelledBy: cancelledBy,
-    cancelledAt: new Date(),
+        reason: reason || "other",
+        note: note || "",
+        cancelledBy: cancelledBy,
+        cancelledAt: new Date(),
+      },
+    },
+    { new: true },
+  );
+  if (!updateRide) {
+    throw new AppError("Ride cannot be cancelled", "INVALID_STATUS", 400);
   }
-  },
-  {new:true}
-)
-if (!updateRide) {
-  throw new AppError("Ride cannot be cancelled", "INVALID_STATUS", 400);
-}
-
 
   // Fetch data from microservices
   if (cancelledBy === "user") {
@@ -342,31 +373,37 @@ if (!updateRide) {
   }
 
   // notify canceller
-if (cancellerData?.socketId) {
-  sendMessageToSocketId(cancellerData.socketId, "ride-cancelled", {
-    rideId,
-    reason,
-    note,
-  });
-}
+  if (cancellerData?.socketId) {
+    const socketKey =
+      cancelledBy === "user"
+        ? `user:${cancellerData._id}`
+        : `captain:${cancellerData._id}`;
+    sendMessageToSocketId(socketKey, "ride-cancelled", {
+      rideId,
+      reason,
+      note,
+    });
+  }
 
-// notify other party
-const other = cancelledBy === "user" ? captain : user;
+  // notify other party
+  const other = cancelledBy === "user" ? captain : user;
 
-if (other?.socketId) {
-  sendMessageToSocketId(other.socketId, "ride-cancelled", {
-    rideId,
+  if (other?.socketId) {
+    const socketKey =
+      cancelledBy === "user" ? `captain:${other._id}` : `user:${other._id}`;
+    sendMessageToSocketId(socketKey, "ride-cancelled", {
+      rideId,
+      reason,
+      note,
+    });
+  }
+  publishToQueue("ride-cancelled", {
+    rideId: updateRide._id,
+    userId: updateRide.user,
+    captainId: updateRide.captain,
+    cancelledBy,
     reason,
-    note,
   });
-}
- publishToQueue("ride-cancelled", {
-  rideId: updateRide._id,
-  userId: updateRide.user,
-  captainId: updateRide.captain,
-  cancelledBy,
-  reason,
-});
   return {
     message: "Ride cancelled successfully",
     updateRide,
@@ -376,39 +413,46 @@ if (other?.socketId) {
 module.exports.rateRide = async ({ rideId, rating, feedback, userId }) => {
   const ride = await rideModel.findOne({ _id: rideId, user: userId });
   if (!ride) throw new AppError("Ride not found", "NOT_FOUND", 404);
-  if (ride.status !== "completed") throw new AppError("Only completed rides can be rated", "INVALID_STATE", 400);
+  if (ride.status !== "completed")
+    throw new AppError(
+      "Only completed rides can be rated",
+      "INVALID_STATE",
+      400,
+    );
   if (ride.rating) throw new AppError("Ride already rated", "BAD_REQUEST", 400);
 
   ride.rating = rating;
   if (feedback) ride.feedback = feedback;
   await ride.save();
-const rideDate = new Date(ride.createdAt);
-rideDate.setHours(0, 0, 0, 0);
+  const rideDate = new Date(ride.createdAt);
+  rideDate.setHours(0, 0, 0, 0);
 
   await CaptainDailyStatsModel.updateOne(
     { captainId: ride.captain, date: rideDate },
     {
       $inc: {
         totalRatingPoints: rating,
-        ratedRides: 1
-      }
+        ratedRides: 1,
+      },
     },
-    { upsert: true }
+    { upsert: true },
   );
 
   return ride;
 };
 
 module.exports.getCaptainStats = async (captainId) => {
-  if (!captainId) throw new AppError("CaptainId is required", "BAD_REQUEST", 400);
+  if (!captainId)
+    throw new AppError("CaptainId is required", "BAD_REQUEST", 400);
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-const stats = await CaptainDailyStatsModel.findOne({
-  captainId,
-  date: today
-}).lean();
-  if (!stats) throw new AppError("No stats found for this captain", "NOT_FOUND", 404);
+  const stats = await CaptainDailyStatsModel.findOne({
+    captainId,
+    date: today,
+  }).lean();
+  if (!stats)
+    throw new AppError("No stats found for this captain", "NOT_FOUND", 404);
   return stats;
 };

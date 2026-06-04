@@ -4,9 +4,9 @@ require("../models/captain.model");
 const blackListTokenModel =
 require("../models/blackListToken.model");
 
-const {
-   sendMessageToSocketId
-} = require("../socket");
+// const {
+//    sendMessageToSocketId
+// } = require("../socket");
 
 const isBlackListCaptain =
 async (data, queue) => {
@@ -45,31 +45,31 @@ async (data, queue) => {
    return response;
 };
 
-const notificationRideEnded =
-async (data) => {
+// const notificationRideEnded =
+// async (data) => {
 
-   const captain =
-      await captainModel
-         .findById(data.captainId)
-         .select("socketId")
-         .lean();
+//    const captain =
+//       await captainModel
+//          .findById(data.captainId)
+//          .select("socketId")
+//          .lean();
 
-   if (captain?.socketId) {
+  
 
-      sendMessageToSocketId(
+//       sendMessageToSocketId(
 
-         captain.socketId,
+//          `captain:${data.captainId}`,
 
-         "ride-ended",
+//          "ride-ended",
 
-         data.message
-      );
-   }
+//          data.message
+//       );
+   
 
-   return {
-      success: true
-   };
-};
+//    return {
+//       success: true
+//    };
+// };
 
 const getCaptainInTheRadius =
 async (data) => {
@@ -265,7 +265,7 @@ module.exports = {
 
    getCaptain,
 
-   notificationRideEnded,
+   // notificationRideEnded,
 
    getCaptainInTheRadius,
 

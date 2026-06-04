@@ -1,0 +1,98 @@
+services:
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth
+      - user
+      - captain
+      - ride
+      - payment
+      - call-service
+    networks:
+      - backend
+
+  auth:
+    build: ./auth
+    container_name: auth
+    ports:
+      - "3004:3004"
+    env_file:
+      - ./auth/.env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  user:
+    build: ./user
+    container_name: user
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./user/.env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  captain:
+    build: ./captain
+    container_name: captain
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./captain/.env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  ride:
+    build: ./ride
+    container_name: ride
+    ports:
+      - "3003:3003"
+    env_file:
+      - ./ride/.env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  payment:
+    build: ./payment
+    container_name: payment
+    ports:
+      - "3006:3006"
+    env_file:
+      - ./payment/.env
+    depends_on:
+      - redis
+    networks:
+      - backend
+  call-service:
+    build: ./call-service
+    container_name: call-service
+    ports:
+      - "3005:3005"
+    env_file:
+      - ./call-service/.env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge

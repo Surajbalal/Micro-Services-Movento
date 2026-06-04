@@ -85,21 +85,31 @@ const rideSchema = mongoose.Schema({
     distance:{
         type: Number //in mtr
     },
-    paymentID:{
-        type: String
-    },
-    orderID:{
-        type: String
-    },
-    signature:{
-        type: String
-    },
+   payment: {
+  method: {
+    type: String,
+    enum: ['cash', 'upi', 'card'],
+    default: 'cash'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'paid', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  reason:{
+    type: String,
+    default: ''
+  }
+},
+
     otp:{
         type : String,
         select: false,
         required: true,
     }
-})
+}, {
+    timestamps: true
+  })
 rideSchema.index(
   { captain: 1 },
   {partialFilterExpression: { status: { $in: ["ongoing", "accepted"] } } }

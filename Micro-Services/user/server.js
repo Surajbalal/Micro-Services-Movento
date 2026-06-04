@@ -17,7 +17,7 @@ async function bootstrap() {
     
     await connect(); // connect DB
     
-    initializeSocket(server); // Initialize socket.io
+    // initializeSocket(server); // Initialize socket.io
     await subscribeToQueue("isBlackList-user");
     await subscribeToQueue("get-user");
     await subscribeToQueue("notification-ride-ended");

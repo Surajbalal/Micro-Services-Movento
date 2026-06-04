@@ -3,11 +3,10 @@ const { v4: uuidv4 } = require("uuid");
 const amqp = require("amqplib");
 const blackListTokenModel = require("../models/blackListToken.model");
 const userModel = require("../models/user.models");
-const config = require('../config/config')
+const config = require("../config/config");
 const AppError = require("../utils/appError");
 // const { sendMessageToSocketId } = require("../socket");
 let channel;
-
 
 // Connect to RabbitMQ using the connection URL from the environment variable
 async function connectRabbitMQ() {
@@ -24,7 +23,8 @@ async function connectRabbitMQ() {
 // Publish a message to a specific queue
 async function publishToQueue(queue, message) {
   const correlationId = uuidv4();
-  if (!channel) throw new AppError("Channel not connected", "RABBITMQ_ERROR", 500);
+  if (!channel)
+    throw new AppError("Channel not connected", "RABBITMQ_ERROR", 500);
 
   const replyQueue = await channel.assertQueue("", { exclusive: true });
 
@@ -35,7 +35,13 @@ async function publishToQueue(queue, message) {
 
   const response = await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new AppError("RPC Timeout: No reply received from consumer", "RABBITMQ_TIMEOUT", 504));
+      reject(
+        new AppError(
+          "RPC Timeout: No reply received from consumer",
+          "RABBITMQ_TIMEOUT",
+          504,
+        ),
+      );
     }, 5000);
 
     channel.consume(
@@ -55,7 +61,11 @@ async function publishToQueue(queue, message) {
 // Subscribe to a specific queue
 async function subscribeToQueue(queue) {
   if (!channel) {
-    throw new AppError("RabbitMQ channel is not initialized", "RABBITMQ_ERROR", 500);
+    throw new AppError(
+      "RabbitMQ channel is not initialized",
+      "RABBITMQ_ERROR",
+      500,
+    );
   }
   await channel.assertQueue(queue);
   channel.consume(queue, async (msg) => {
@@ -67,22 +77,29 @@ async function subscribeToQueue(queue) {
 
     if (queue == "isBlackList-user") {
       console.log("called", queue);
-      response = await blackListTokenModel.findOne({ token: data.token }).lean();
+      response = await blackListTokenModel
+        .findOne({ token: data.token })
+        .lean();
     } else if (queue == "get-user") {
       response = await userModel.findById(data._id).lean();
     } else if (queue == "update-user") {
       response = await userModel.findByIdAndUpdate(data._id, {
         $set: data.updateData,
       });
-    } else if (queue === "notification-ride-ended") {
-      const { sendMessageToSocketId } = require("../socket"); 
-      const user = await userModel.findById(data.userId).select("socketId").lean();
+    } 
+    // else if (queue === "notification-ride-ended") {
+    //   const { sendMessageToSocketId } = require("../socket");
+    //   const user = await userModel
+    //     .findById(data.userId)
+    //     .select("socketId")
+    //     .lean();
 
-      if (user?.socketId) {
-        sendMessageToSocketId(user?.socketId, "ride-ended", data);
-      }
+    //   if (user?.socketId) {
+    //     sendMessageToSocketId(`user:${data.userId}`, "ride-ended", data);
+    //   }
       //  response = { success: true };
-    } else if (queue === "USER_CREATED") {
+    // }
+     else if (queue === "USER_CREATED") {
       try {
         const existingUser = await userModel.findOne({ email: data.email });
         if (!existingUser) {

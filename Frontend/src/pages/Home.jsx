@@ -26,7 +26,7 @@ function Home() {
   const searchingPanelRef = useRef(null);
   const vehicleSearchRef = useRef(null);
   const driverWaitingRef = useRef(null);
-    const [isRideAccepted, setIsRideAccepted] = useState(false);
+  const [isRideAccepted, setIsRideAccepted] = useState(false);
   const [activeField, setActiveField] = useState(null);
   const [isLocationSelected, setIsLocationSelected] = useState(false);
   const [fare, setfare] = useState({});
@@ -39,60 +39,56 @@ function Home() {
 
   const token = localStorage.getItem("token");
 
-
   const [isVehicalPanelOpen, setIsVehicalPanelOpen] = useState(false);
-useEffect(() => {
-  const fetchRide = async () => {
-    try {
-      const response = await axiosInstance.get("/rides/get-ride");
-       if (!response.data?._id) return;
+  useEffect(() => {
+    const fetchRide = async () => {
+      try {
+        const response = await axiosInstance.get("/rides/get-ride");
+        if (!response.data?._id) return;
 
-    if (response.data.status === "ongoing") {
-  setIsDriverWaitingOpen(false);
-    setIsRideAccepted(false);
+        if (response.data.status === "ongoing") {
+          setIsDriverWaitingOpen(false);
+          setIsRideAccepted(false);
 
-    navigate("/riding", { state: {  ride: response.data } });
-    return;
-    }
-      if (response.data && response.data._id) {
-        setRideData(response.data);
-        setIsDriverWaitingOpen(true);  
-        setIsRideAccepted(true);
+          navigate("/riding", { state: { ride: response.data } });
+          return;
+        }
+        if (response.data && response.data._id) {
+          setRideData(response.data);
+          setIsDriverWaitingOpen(true);
+          setIsRideAccepted(true);
+        }
+      } catch (error) {
+        console.log("No active ride found");
       }
-    } catch (error) {
-      console.log("No active ride found");
+    };
+
+    fetchRide();
+  }, []);
+
+  useEffect(() => {
+    if (!socket || !rideData?._id) return;
+
+    const joinRoom = () => {
+      sendMessage("join-ride-room", rideData._id, (response) => {
+        console.log("Joined room:", response);
+      });
+      // setTimeout(() => {
+      //   sendMessage("debug-room", rideData._id);
+      // }, 500);
+    };
+
+    if (socket.connected) {
+      joinRoom();
     }
-  };
 
-  fetchRide();
-}, []);
+    socket.on("connect", joinRoom);
 
-useEffect(() => {
-  if (!socket || !rideData?._id) return;
+    return () => {
+      socket.off("connect", joinRoom);
+    };
+  }, [socket, rideData?._id]);
 
-  const joinRoom = () => {
-    sendMessage("join-ride-room", rideData._id);
-    setTimeout(() => {
-      sendMessage("debug-room", rideData._id);
-    }, 500);
-  };
-
-  if (socket.connected) {
-    joinRoom();
-  }
-
-  socket.on("connect", joinRoom);
-
-  return () => {
-    socket.off("connect", joinRoom);
-  };
-}, [socket, rideData?._id]);
-
-
-
-
-
-  
   // Debug log for state changes
   useEffect(() => {
     console.log("isVehicalPanelOpen changed to:", isVehicalPanelOpen);
@@ -110,103 +106,104 @@ useEffect(() => {
   useEffect(() => {
     console.log("isDriverWaitingOpen changed to:", isDriverWaitingOpen);
   }, [isDriverWaitingOpen]);
+  // ------ Now Iam doing this from backend automatically when socket connect call from socket context-------
+  // useEffect(() => {
+  //   if (user && user._id && socket) {
+  //     const joinUser = () => {
+  //       sendMessage("join", { userType: "user", userId: user._id });
+  //     };
+
+  //     if (socket.connected) {
+  //       joinUser();
+  //     }
+
+  //     socket.on("connect", joinUser);
+
+  //     return () => {
+  //       socket.off("connect", joinUser);
+  //     };
+  //   }
+  // }, [user, socket]);
 
   useEffect(() => {
-    if (user && user._id && socket) {
-      const joinUser = () => {
-        sendMessage("join", { userType: "user", userId: user._id });
-      };
+    if (!socket) return;
 
-      if (socket.connected) {
-        joinUser();
-      }
+    const handleRideConfirm = (ride) => {
+      console.log(" ride-confirm received", ride);
 
-      socket.on("connect", joinUser);
+      // set ride data
+      setRideData(ride);
 
-      return () => {
-        socket.off("connect", joinUser);
-      };
-    }
-  }, [user, socket]);
+      // close all other panels
+      setIsVehicalPanelOpen(false);
+      setIsSearchingPanelOpen(false);
+      setIsVehicleSearchOpen(false);
 
-useEffect(() => {
-  if (!socket) return;
+      // open waiting panel
+      setIsRideAccepted(true);
+      setIsDriverWaitingOpen(true);
+    };
 
-  const handleRideConfirm = (ride) => {
-    console.log(" ride-confirm received", ride);
+    const handleRideStarted = (ride) => {
+      console.log(" ride-started received", ride);
 
+      setIsDriverWaitingOpen(false);
+      setIsRideAccepted(false);
 
-    // set ride data
-    setRideData(ride);
+      navigate("/riding", { state: { ride } });
+    };
 
-    // close all other panels
-    setIsVehicalPanelOpen(false);
-    setIsSearchingPanelOpen(false);
-    setIsVehicleSearchOpen(false);
+    const handleRideCancelled = (data) => {
+      console.log("ride-cancelled received", data);
+      setRideData({});
+      setIsDriverWaitingOpen(false);
+      setIsRideAccepted(false);
+      setIsPanelOpen(false);
+      alert(`Ride cancelled because of: ${data.reason}` || `Ride Cancelled`);
+    };
 
-    // open waiting panel
-    setIsRideAccepted(true);
-    setIsDriverWaitingOpen(true);
-  };
+    // attach listeners
+    // socket.on("ride-confirm", (data)=>{
+    //   console.log("🔥 ride-confirm received", data);
 
-  const handleRideStarted = (ride) => {
-    
-    console.log(" ride-started received", ride);
+    //   // set ride data
+    //   setRideData(data);
 
-    setIsDriverWaitingOpen(false);
-    setIsRideAccepted(false);
+    //   // close all other panels
+    //   setIsVehicalPanelOpen(false);
+    //   setIsSearchingPanelOpen(false);
+    //   setIsVehicleSearchOpen(false);
 
-    navigate("/riding", { state: { ride } });
-  };
+    //   // open waiting panel
+    //   setIsRideAccepted(true);
+    //   setIsDriverWaitingOpen(true);
+    // });
+    socket.on("ride-ended", (data) => {
+      console.log(" ride-ended received", data);
+      setRideData({});
+      setIsDriverWaitingOpen(false);
+      setIsRideAccepted(false);
+      setIsPanelOpen(false);
+      alert(data.message);
+    });
+    socket.on("ride-confirm", handleRideConfirm);
+    socket.on("ride-started", handleRideStarted);
+    socket.on("ride-cancelled", handleRideCancelled);
 
-  const handleRideCancelled = (data) => {
-    console.log("ride-cancelled received", data);
-    setRideData({});
-    setIsDriverWaitingOpen(false);
-    setIsRideAccepted(false);
-    setIsPanelOpen(false);
-    alert(`Ride cancelled because of: ${data.reason}`|| `Ride Cancelled`);
-  };
-
-  // attach listeners
-  // socket.on("ride-confirm", (data)=>{
-  //   console.log("🔥 ride-confirm received", data);
-
-
-  //   // set ride data
-  //   setRideData(data);
-
-  //   // close all other panels
-  //   setIsVehicalPanelOpen(false);
-  //   setIsSearchingPanelOpen(false);
-  //   setIsVehicleSearchOpen(false);
-
-  //   // open waiting panel
-  //   setIsRideAccepted(true);
-  //   setIsDriverWaitingOpen(true);
-  // });
-  socket.on("ride-ended", (data) => {
-  console.log(" ride-ended received", data);
-  setRideData({});
-  setIsDriverWaitingOpen(false);
-  setIsRideAccepted(false);
-  setIsPanelOpen(false);
-  alert(data.message);
-});
-  socket.on("ride-confirm",handleRideConfirm);
-  socket.on("ride-started", handleRideStarted);
-  socket.on("ride-cancelled", handleRideCancelled);
-
-  // cleanup (VERY IMPORTANT)
-  return () => {
-    socket.off("ride-confirm", handleRideConfirm);
-    socket.off("ride-started", handleRideStarted);
-    socket.off("ride-cancelled", handleRideCancelled);
-  };
-
-}, [socket, navigate]);
+    // cleanup (VERY IMPORTANT)
+    return () => {
+      socket.off("ride-confirm", handleRideConfirm);
+      socket.off("ride-started", handleRideStarted);
+      socket.off("ride-cancelled", handleRideCancelled);
+    };
+  }, [socket, navigate]);
   const getfare = async () => {
-    console.log("getfare called with pickup:", pickup, "destination:", destination);
+    console.log(
+      "getfare called with pickup:",
+      pickup,
+      "destination:",
+      destination,
+    );
     try {
       const response = await axiosInstance.get(`/rides/get-fare`, {
         params: { pickup: pickup, destination: destination },
@@ -248,8 +245,8 @@ useEffect(() => {
     }
   };
   useEffect(() => {
-  console.log("🔥 STATE CHECK → isDriverWaitingOpen:", isDriverWaitingOpen);
-}, [isDriverWaitingOpen]);
+    console.log("🔥 STATE CHECK → isDriverWaitingOpen:", isDriverWaitingOpen);
+  }, [isDriverWaitingOpen]);
 
   // useEffect(() => {
   //   const handleSelection = async () => {
@@ -259,7 +256,7 @@ useEffect(() => {
   //   };
   //   handleSelection();
   // }, [pickup, destination, isLocationSelected]);
-  
+
   const submitHandler = (e) => {
     e.preventDefault();
   };
@@ -293,7 +290,6 @@ useEffect(() => {
     const timeout = setTimeout(fetchSuggestions, 400);
     return () => clearTimeout(timeout);
   }, [pickup, destination, activeField, isPanelOpen]);
-
 
   return (
     <div className="h-screen bg-white flex flex-col relative overflow-hidden font-sans">
@@ -415,9 +411,16 @@ useEffect(() => {
                   <button
                     type="button"
                     onClick={() => {
-                      console.log("See Price button clicked, pickup:", pickup, "destination:", destination);
+                      console.log(
+                        "See Price button clicked, pickup:",
+                        pickup,
+                        "destination:",
+                        destination,
+                      );
                       if (pickup && destination) {
-                        console.log("Both pickup and destination exist, calling getfare");
+                        console.log(
+                          "Both pickup and destination exist, calling getfare",
+                        );
                         getfare();
                         setIsLocationSelected(true);
                       } else {
@@ -432,7 +435,9 @@ useEffect(() => {
                   <button
                     type="button"
                     onClick={() => {
-                      console.log("Choose Vehicle button clicked, reopening vehicle panel");
+                      console.log(
+                        "Choose Vehicle button clicked, reopening vehicle panel",
+                      );
                       setIsVehicalPanelOpen(true);
                     }}
                     className="hidden md:flex mt-4 items-center justify-center bg-black hover:bg-gray-800 text-white font-medium py-3 px-6 rounded-lg transition-transform active:scale-95 w-40"
@@ -477,7 +482,7 @@ useEffect(() => {
 
       {/* Vehicle Selection Panel */}
       <div
-        style={{ display: isVehicalPanelOpen ? 'block' : 'none' }}
+        style={{ display: isVehicalPanelOpen ? "block" : "none" }}
         className="fixed z-50 bottom-0 left-0 right-0 md:left-12 md:right-auto md:bottom-auto md:top-[120px] md:h-fit md:max-h-[calc(100vh-140px)] md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.2)] md:shadow-2xl overflow-y-auto w-full md:border border-gray-100"
       >
         <VehicalPanel
@@ -492,7 +497,7 @@ useEffect(() => {
 
       {/* Searching / Confirm Ride Panel */}
       <div
-        style={{ display: isSearchingPanelOpen ? 'block' : 'none' }}
+        style={{ display: isSearchingPanelOpen ? "block" : "none" }}
         className="fixed z-50 bottom-0 left-0 right-0 md:left-12 md:right-auto md:bottom-auto md:top-[120px] md:h-fit md:max-h-[calc(100vh-140px)] md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.2)] md:shadow-2xl overflow-y-auto w-full md:border border-gray-100"
       >
         <Searching
@@ -509,7 +514,7 @@ useEffect(() => {
 
       {/* Looking for Driver Panel */}
       <div
-        style={{ display: isVehicleSearchOpen ? 'block' : 'none' }}
+        style={{ display: isVehicleSearchOpen ? "block" : "none" }}
         className="fixed z-50 bottom-0 left-0 right-0 md:left-12 md:right-auto md:bottom-auto md:top-[120px] md:h-fit md:max-h-[calc(100vh-140px)] md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.2)] md:shadow-2xl md:border border-gray-100 overflow-hidden w-full"
       >
         <LookingForDriver
@@ -524,7 +529,7 @@ useEffect(() => {
 
       {/* Waiting for Driver Panel — always mounted, shown via state */}
       <div
-        style={{ display: isDriverWaitingOpen ? 'block' : 'none' }}
+        style={{ display: isDriverWaitingOpen ? "block" : "none" }}
         className="fixed z-50 bottom-0 left-0 right-0 md:left-12 md:right-auto md:bottom-auto md:top-[120px] md:h-fit md:max-h-[calc(100vh-140px)] md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.2)] md:shadow-2xl md:border border-gray-100 overflow-hidden w-full"
       >
         <WaitingForDriver

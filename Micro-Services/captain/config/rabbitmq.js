@@ -2,14 +2,21 @@ const amqp = require("amqplib");
 
 let channel;
 let replyQueue;
+let connection;
 
 async function connectRabbitMQ() {
+   try {
 
-   const connection =
+    connection =
       await amqp.connect(process.env.RABBIT_URL);
 
    connection.on("close", () => {
       console.log("RabbitMQ disconnected");
+
+      setTimeout(
+         connectRabbitMQ,
+         5000
+      )
    });
 
    connection.on("error", (err) => {
@@ -25,8 +32,19 @@ async function connectRabbitMQ() {
    });
 
    console.log("RabbitMQ Connected");
-}
 
+      
+   } catch (error) {
+
+      console.log("RabbitMQ Connection Error:", error);
+      setTimeout(
+         connectRabbitMQ,
+         5000
+      )
+      
+   }
+
+}
 function getChannel() {
    return channel;
 }

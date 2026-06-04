@@ -13,7 +13,7 @@ const registerQueues = require("./services/rabbitmq/registerQueues");
 
 const server = http.createServer(app);
 
-initializeSocket(server);
+// initializeSocket(server);
 async function bootstrap() {
   try {
     await connect(); 

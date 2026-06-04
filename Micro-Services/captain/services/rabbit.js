@@ -101,12 +101,12 @@ async function subscribeToQueue(queue) {
                 console.log("reponse", response);
 
             }
-            else if (queue === "notification-ride-ended") {
-                const captain = await captainModel.findById(data.captainId).select("socketId").lean();
-                if (captain?.socketId) {
-                    sendMessageToSocketId(captain.socketId, "ride-ended", data.message);
-                }
-            }
+            // else if (queue === "notification-ride-ended") {
+            //     const captain = await captainModel.findById(data.captainId).select("socketId").lean();
+            //     if (captain?.socketId) {
+            //         sendMessageToSocketId(`captain:${data.captainId}`, "ride-ended", data.message);
+            //     }
+            // }
             else if (queue === "get-captainInTheRadius") {
                 console.log("Processing get-captainInTheRadius for:", data);
                 response = await captainModel.find({

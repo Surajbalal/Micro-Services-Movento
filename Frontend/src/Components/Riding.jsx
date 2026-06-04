@@ -91,8 +91,9 @@ function Riding() {
 
           <button className="w-full mt-6 bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-2xl shadow-lg transition-colors text-lg">
             <PaymentButton
+    paymentStatus={rideData.payment?.status}
     rideId={rideData._id}
-    userId={rideData.userId}
+    userId={rideData.user}
     amount={rideData.fare}
 />
           </button>

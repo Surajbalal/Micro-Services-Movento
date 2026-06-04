@@ -24,10 +24,10 @@ const verifyKey = async(token)=>{
       throw new Error("Token expired");
     }
 
-    if (error.name === "JsonWebTokenError") {
-      throw new Error("Invalid token");
-    }
-
+  if (error.name === "JsonWebTokenError") {
+    console.log("JWT ERROR:", error);
+    throw error;
+}
     throw new Error("Authentication failed");
   }
         

@@ -1,9 +1,11 @@
 // controllers/webhook.controller.js
 const crypto = require("crypto");
 const Payment = require("../models/payment.model");
-const { publishEvent } = require("../services/event.service");
+const { publishToQueue } = require("../services/event.service");
 
 exports.handleWebhook = async (req, res) => {
+  console.log("Webhook hit");
+console.log("Event:", req.body.event);
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   const signature = req.headers["x-razorpay-signature"];
@@ -24,15 +26,15 @@ exports.handleWebhook = async (req, res) => {
 
     const payment = await Payment.findOneAndUpdate(
       { orderId: paymentData.order_id },
-      {
+     {$set:{
         status: "paid",
         paymentId: paymentData.id
-      },
+      }},
       { new: true }
     );
 
     // Publish event to your system
-    publishEvent("ride.payment.success", {
+    publishToQueue("ride-payment-success", {
       rideId: payment.rideId,
       userId: payment.userId,
       amount: payment.amount
@@ -42,15 +44,14 @@ exports.handleWebhook = async (req, res) => {
   if (event === "payment.failed") {
     const paymentData = req.body.payload.payment.entity;
 
-      const payment = await Payment.findOneAndUpdate(
-      { orderId: paymentData.order_id },
-      { status: "failed" },
-      { new: true }
-    );
+      const payment = await Payment.findOneAndUpdate({orderId: paymentData.order_id}, {$set: {
+      
+       status: "failed", reason:paymentData.error_description || "Payment failed", 
+      }},{ new: true });
  if (!payment) return res.sendStatus(200);
 
   //  Publish failure event
-  publishEvent("ride.payment.failed", {
+  publishToQueue("ride-payment-failed", {
     rideId: payment.rideId,
     userId: payment.userId,
     amount: payment.amount,

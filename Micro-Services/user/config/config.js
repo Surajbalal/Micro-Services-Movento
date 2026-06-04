@@ -2,7 +2,7 @@ require("dotenv").config();
 const requiredEnv = [
   "RABBIT_URL",
   "DB_CONNECT",
-  "PORT"
+  "PORT",
 ];
 
 requiredEnv.forEach((key) => {

@@ -64,7 +64,8 @@ const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) =
     // When call is rejected
     unsubs.push(
       receiveMessage("call-rejected", (data) => {
-        if (data.rideId === rideId && data.callerId === callerId) {
+        console.log("call-rejected", data);
+        if (data.rideId === rideId && data.callerId === receiverId) {
           stopAudio();
           setCallState('idle');
           // Optional: Show toast here, alert may block UI
@@ -97,14 +98,14 @@ const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) =
     setCallState('calling');
   
     audioRef.current.play().catch(e => console.log("Audio blocked by browser:", e));
-    sendMessage("call-user", { rideId, callerId, receiverId });
-     sendMessage("debug-room", {rideId});
+    sendMessage("call-user",  rideId);
+     sendMessage("debug-room", rideId);
     // Auto hangup after 30 seconds of ringing
     setTimeout(() => {
       setCallState((current) => {
         if (current === 'calling') {
           stopAudio();
-          sendMessage("end-call", { rideId, callerId, receiverId });
+          sendMessage("end-call", rideId);
           return 'idle';
         }
         return current;
@@ -117,21 +118,21 @@ const Call = forwardRef(({ rideId, callerId, receiverId, renderTrigger }, ref) =
 
   const acceptCall = () => {
     stopAudio();
-    sendMessage("accept-call", { rideId, callerId: receiverId, receiverId: callerId });
+    sendMessage("accept-call", rideId);
     setCallState('connected');
     joinCall(`ride_${rideId}`, callerId);
   };
 
   const rejectCall = () => {
     stopAudio();
-    sendMessage("reject-call", { rideId, callerId: receiverId, receiverId: callerId });
+    sendMessage("reject-call",  rideId);
     setCallState('idle');
   };
 
   const endCall = () => {
     stopAudio();
     leaveCall();
-    sendMessage("end-call", { rideId, callerId, receiverId });
+    sendMessage("end-call", rideId);
     setCallState('idle');
   };
 

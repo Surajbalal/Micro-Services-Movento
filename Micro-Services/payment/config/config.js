@@ -5,6 +5,7 @@ const requiredEnv = [
   "RAZORPAY_KEY_SECRET",
   "DB_CONNECT",
   "RABBIT_URL",
+  "RAZORPAY_WEBHOOK_SECRET",
 ];
 
 requiredEnv.forEach((key) => {
@@ -18,5 +19,6 @@ const config = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   DB_CONNECT: process.env.DB_CONNECT,
   RABBIT_URL: process.env.RABBIT_URL,
+  RAZORPAY_WEBHOOK_SECRET:process.env.RAZORPAY_WEBHOOK_SECRET,
 };
 module.exports = config;

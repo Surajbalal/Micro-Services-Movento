@@ -20,19 +20,20 @@ function CaptainHome() {
   const ridePopupPanelRef = useRef(null);
   const { sendMessage, socket } = useContext(SocketContext);
   const { captain } = useContext(CaptainDataContext);
-  const [captainStats,setCaptainStats] = useState({})
-  const [isCaptainDetailLoading,setIsCaptainDetailLoading] = useState(false)
+  const [captainStats, setCaptainStats] = useState({});
+  const [isCaptainDetailLoading, setIsCaptainDetailLoading] = useState(false);
 
   const [isAcceptingRide, setIsAcceptingRide] = useState(false);
   const callRef = useRef(null); // ref to Call component to trigger initiateCall from captain side
 
-  const confirm = async()=>{
+  const confirm = async () => {
     try {
       setIsAcceptingRide(true);
       const response = await captainAxiosInstance.post(`/rides/confirm`, {
-        rideId: ride._id, captainId: captain._id,
+        rideId: ride._id,
+        captainId: captain._id,
       });
-      if(response.status == 200){
+      if (response.status == 200) {
         setIsRidePopupOpen(false);
         setIsConfirmPopUpOpen(true);
         setIsRideAccepted(true);
@@ -46,71 +47,74 @@ function CaptainHome() {
     } finally {
       setIsAcceptingRide(false);
     }
-  }
-    const navigate = useNavigate();
-  useEffect(() => {  
-  
-  const fetchRide = async () => {
+  };
+  const navigate = useNavigate();
+  useEffect(() => {
+    const fetchRide = async () => {
       try {
         const response = await captainAxiosInstance.get("/rides/get-ride");
-        
-    if (!response.data?._id) return;
 
-    if (response.data.status === "ongoing") {
+        if (!response.data?._id) return;
+         console.log("captain home rideee",response.data);
 
-      console.log("navigating");
+        if (response.data.status === "ongoing") {
+          console.log("navigating");
+           setRide(response.data);
+          
+          navigate("/captain-riding", {
+            state: { ride: response.data },
+          });
 
-      navigate("/captain-riding", {
-        state: { ride: response.data }
-      });
+          return;
+        }
 
-      return;
-    }
-
-    setRide(response.data);
-    setIsConfirmPopUpOpen(true);
-    setIsRideAccepted(true);
-
-        
+        setRide(response.data);
+        setIsConfirmPopUpOpen(true);
+        setIsRideAccepted(true);
       } catch (error) {
         console.log("No active ride found");
       }
     };
-  
+
     fetchRide();
   }, []);
   useEffect(() => {
     if (!socket || !ride?._id) return;
-  
+
     const joinRoom = () => {
-      sendMessage("join-ride-room", ride._id);
-      setTimeout(() => {
-        sendMessage("debug-room", ride._id);
-      }, 500);
+      sendMessage("join-ride-room", ride._id, (response) => {
+        console.log("Joined room:", response);
+      });
+      // setTimeout(() => {
+      //   sendMessage("debug-room", ride._id);
+      // }, 500);
     };
-  
+
     if (socket.connected) {
       joinRoom();
     }
-  
+
     socket.on("connect", joinRoom);
-  
+
     return () => {
       socket.off("connect", joinRoom);
     };
   }, [socket, ride?._id]);
-  
-  useEffect(()=>{
-    const fetchCaptainStats = async()=>{
+
+  useEffect(() => {
+    const fetchCaptainStats = async () => {
       setIsCaptainDetailLoading(true);
-    const response = await captainAxiosInstance.get('/rides/get-captain-stats')
-    if(response.status==200){
-      setCaptainStats(response.data);
-    }
-    setIsCaptainDetailLoading(false);
-    console.log("captain stats",response.data);}
+      const response = await captainAxiosInstance.get(
+        "/rides/get-captain-stats",
+      );
+      if (response.status == 200) {
+        setCaptainStats(response.data);
+      }
+      setIsCaptainDetailLoading(false);
+      console.log("captain stats", response.data);
+    };
     fetchCaptainStats();
-  },[captain?._id]);
+  }, [captain?._id]);
 
   useEffect(() => {
     if (!captain || !sendMessage) return;
@@ -122,16 +126,24 @@ function CaptainHome() {
     console.log("Requesting captain location...");
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
         console.log(" Captain location updated:", location);
         setCaptainLocation(location);
-        sendMessage("update-captain-location", { captainId: captain._id, location });
+        sendMessage("update-captain-location", {
+          captainId: captain._id,
+          location,
+        });
       },
       (error) => {
         console.error(" Error getting captain location:", error.message);
-        alert(`Location Error: ${error.message}. Please enable location services in your browser!`);
+        alert(
+          `Location Error: ${error.message}. Please enable location services in your browser!`,
+        );
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
@@ -139,7 +151,7 @@ function CaptainHome() {
 
   useEffect(() => {
     if (!socket) return;
-    
+
     const handleNewRide = (data) => {
       setRide({ ...data.ride, user: data.user });
       setIsRidePopupOpen(true);
@@ -151,43 +163,49 @@ function CaptainHome() {
       setIsRidePopupOpen(false);
       setIsConfirmPopUpOpen(false);
       setIsRideAccepted(false);
-      alert(`Ride cancelled: ${data.reason || 'No reason provided'}`);
+      alert(`Ride cancelled: ${data.reason || "No reason provided"}`);
     };
 
     socket.on("ride-ended", (data) => {
       console.log("ride-ended received", data);
       setRide({});
       alert(data.message);
-});
+    });
 
-
-    socket.on("new-ride", handleNewRide);
+    socket.on("new-ride", handleNewRide,(data)=>{
+      console.log("new ride received",data);
+    });
     socket.on("ride-cancelled", handleRideCancelled);
-    
+
     return () => {
       socket.off("new-ride", handleNewRide);
       socket.off("ride-cancelled", handleRideCancelled);
     };
   }, [socket]);
-
-  useEffect(()=>{
-    if (captain && captain._id && socket) {
-      sendMessage("join",{userType:"captain",userId: captain._id });
-    }
-  },[captain, socket]);
+  // ------ Now Iam doing this from backend automatically when socket connect call from socket context-------
+  // useEffect(()=>{
+  //   if (captain && captain._id && socket) {
+  //     sendMessage("join",{userType:"captain",userId: captain._id });
+  //   }
+  // },[captain, socket]);
 
   // Panels controlled via React inline style — no GSAP needed
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col relative overflow-hidden font-sans">
-      
       {/* Premium Web Header */}
       <header className="fixed md:absolute top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100 transition-all duration-300">
         <div className="px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <img className="w-12 md:w-16 drop-shadow-sm" src={logo} alt="Uber Logo" />
-              <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Captain Terminal</h1>
+              <img
+                className="w-12 md:w-16 drop-shadow-sm"
+                src={logo}
+                alt="Uber Logo"
+              />
+              <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                Captain Terminal
+              </h1>
             </div>
             <div className="flex items-center gap-4 md:gap-6">
               <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-700 font-medium transition-colors border border-gray-200 shadow-inner">
@@ -205,10 +223,10 @@ function CaptainHome() {
           </div>
         </div>
       </header>
-      
+
       {/* Background Map spanning everything */}
       <div className="absolute inset-0 z-0 bg-blue-50">
-         <LiveTracking rideData={ride} isCaptain={true} />
+        <LiveTracking rideData={ride} isCaptain={true} />
       </div>
 
       {/* Map Overlay Info - Clean floating badge on Desktop */}
@@ -220,7 +238,13 @@ function CaptainHome() {
               <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
             </span>
             <span className="text-sm font-bold text-gray-800 tracking-wide uppercase">
-              {ride ? (ride.status === 'accepted' ? 'En Route to Pickup' : ride.status === 'started' ? 'Driving to Destination' : 'Online & Ready') : 'Online & Ready'}
+              {ride
+                ? ride.status === "accepted"
+                  ? "En Route to Pickup"
+                  : ride.status === "started"
+                    ? "Driving to Destination"
+                    : "Online & Ready"
+                : "Online & Ready"}
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 font-medium bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
@@ -232,41 +256,44 @@ function CaptainHome() {
 
       {/* Captain Profile Summary - Floating Bottom Left on Desktop, Bottom Sheet on Mobile */}
       <div className="absolute bottom-0 left-0 right-0 md:bottom-8 md:left-8 md:right-auto md:w-[400px] bg-white md:bg-white/95 md:backdrop-blur-xl md:rounded-3xl rounded-t-3xl shadow-[0_-5px_30px_rgba(0,0,0,0.1)] md:shadow-2xl border-t md:border border-gray-100 z-20 overflow-hidden">
-        <CaptainDetails stats={captainStats} isCaptainDetailLoading={isCaptainDetailLoading}/>
+        <CaptainDetails
+          stats={captainStats}
+          isCaptainDetailLoading={isCaptainDetailLoading}
+        />
       </div>
 
       {/* Modals: New Ride Request */}
       {/* On massive screens, this hovers right in the middle or strictly right side */}
-      <div 
-        ref={ridePopupPanelRef} 
-        style={{ display: isRidePopupOpen ? 'block' : 'none' }}
+      <div
+        ref={ridePopupPanelRef}
+        style={{ display: isRidePopupOpen ? "block" : "none" }}
         className="fixed z-50 bottom-0 left-0 right-0 top-auto md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.2)] md:shadow-[0_20px_70px_-10px_rgba(0,0,0,0.5)] md:border border-white/50 max-h-[92vh] overflow-y-auto"
       >
-        <RidePopUp 
-          ride={ride} 
+        <RidePopUp
+          ride={ride}
           confirm={confirm}
           isAcceptingRide={isAcceptingRide}
-          setIsRidePopupOpen={setIsRidePopupOpen} 
+          setIsRidePopupOpen={setIsRidePopupOpen}
           setIsConfirmPopUpOpen={setIsConfirmPopUpOpen}
         />
       </div>
-      
+
       {/* Modals: Confirm Ride Start */}
-      <div 
-        ref={confirmPopupPanelRef} 
-        style={{ display: isConfirmPopUpOpen ? 'block' : 'none' }}
+      <div
+        ref={confirmPopupPanelRef}
+        style={{ display: isConfirmPopUpOpen ? "block" : "none" }}
         className="fixed z-50 bottom-0 left-0 right-0 top-auto md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[450px] bg-white rounded-t-3xl md:rounded-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.2)] md:shadow-[0_20px_70px_-10px_rgba(0,0,0,0.5)] md:border border-white/50 max-h-[92vh] overflow-y-auto"
       >
-        <ConfirmRidePopUp 
+        <ConfirmRidePopUp
           captain={captain}
-          ride={ride} 
-          setIsRidePopupOpen={setIsRidePopupOpen} 
+          ride={ride}
+          setIsRidePopupOpen={setIsRidePopupOpen}
           setIsConfirmPopUpOpen={setIsConfirmPopUpOpen}
           setIsRideAccepted={setIsRideAccepted}
           onCallUser={() => callRef.current?.initiateCall()}
         />
       </div>
-      
+
       {/* Floating button for accepted rides */}
       {isRideAccepted && !isConfirmPopUpOpen && (
         <button
@@ -274,8 +301,8 @@ function CaptainHome() {
           className="fixed bottom-28 md:bottom-8 right-6 md:right-8 z-50 bg-black hover:bg-gray-800 text-white p-5 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-gray-300/50"
           title="Show OTP"
         >
-           <i className="ri-key-2-fill text-2xl"></i>
-           <span className="absolute -top-1 -right-1 flex h-4 w-4">
+          <i className="ri-key-2-fill text-2xl"></i>
+          <span className="absolute -top-1 -right-1 flex h-4 w-4">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
           </span>
@@ -296,4 +323,3 @@ function CaptainHome() {
 }
 
 export default CaptainHome;
-

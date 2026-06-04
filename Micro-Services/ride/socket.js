@@ -1,16 +1,17 @@
 const { Server } = require("socket.io");
 const { createClient } = require("redis");
 const { createAdapter } = require("@socket.io/redis-adapter");
+const authenticateUser = require("./utils/authenticateUser");
 const { publishToQueue } = require("./services/rabbit");
-const {auth} = require("./middlewares/auth.middleware")
-
+const validateRideAccess = require("./socket/utils/validateRideAccess");
+const getCallParticipants = require("./socket/utils/getCallParticipants");
 let io;
 
 async function initializeSocket(server) {
   io = new Server(server, {
     cors: { origin: "*" },
-      pingTimeout: 20000,
-  pingInterval: 25000,
+    pingTimeout: 20000,
+    pingInterval: 25000,
   });
 
   // Redis adapter for scaling
@@ -22,46 +23,58 @@ async function initializeSocket(server) {
 
   io.adapter(createAdapter(pubClient, subClient));
 
-  io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
-    if (!token) return next(new Error("Authentication error"));
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth.token;
+      if (!token) return next(new Error("Authentication error"));
 
-    const decoded = auth({token})
-    console.log(decoded)
+      const user = await authenticateUser(token);
+      socket.user = user;
+      next();
+    } catch (err) {
+      console.error("Socket auth error:", err);
 
-    next();
+      next(new Error("Unauthorized"));
+    }
   });
 
   io.on("connection", (socket) => {
     console.log("Client connected:", socket.id);
 
-    // join event (user or captain)
-    socket.on("join", async ({ userType, userId }) => {
-      try {
-        // personal stable room
-        socket.join(`${userType}:${userId}`);
+    const userId = socket.user._id;
+    const userType = socket.user.role;
 
-        console.log(`Socket ${socket.id} joined ${userType}:${userId}`);
+    socket.join(`${userType}:${userId}`);
+    console.log(
+      `Socket ${userId}
+     joined ${userType}:${userId}`,
+    );
+    // socket.on("join", async ({ userType, userId }) => {
+    //   try {
+    //     // personal stable room
+    //     socket.join(`${userType}:${userId}`);
 
-        const queue = userType === "user" ? "update-user" : "captain-update";
+    //     console.log(`Socket ${socket.id} joined ${userType}:${userId}`);
 
-        await publishToQueue(queue, {
-          _id: userId,
-          updateData: {
-            socketId: socket.id,
-          },
-        });
-      } catch (err) {
-        console.error("Join error:", err);
+    //     const queue = userType === "user" ? "update-user" : "captain-update";
 
-        socket.emit("error", {
-          message: "Join failed",
-        });
-      }
-    });
+    //     await publishToQueue(queue, {
+    //       _id: userId,
+    //       updateData: {
+    //         socketId: socket.id,
+    //       },
+    //     });
+    //   } catch (err) {
+    //     console.error("Join error:", err);
+
+    //     socket.emit("error", {
+    //       message: "Join failed",
+    //     });
+    //   }
+    // });
 
     // rideRoom
-    socket.on("join-ride-room", async (rideId,callback) => {
+    socket.on("join-ride-room", async (rideId, callback) => {
       try {
         if (!rideId) {
           return socket.emit("error", {
@@ -69,12 +82,20 @@ async function initializeSocket(server) {
           });
         }
 
+        const isAllowed = await validateRideAccess(rideId, userId);
+
+        if (!isAllowed) {
+          return socket.emit("error", {
+            message: "You are not allowed to join this room",
+          });
+        }
+
         const roomName = `ride:${rideId}`;
 
         await socket.join(roomName);
 
-        callback({
-          success:true
+        callback?.({
+          success: true,
         });
         console.log(`Socket ${socket.id} joined ${roomName}`);
       } catch (err) {
@@ -85,15 +106,36 @@ async function initializeSocket(server) {
         });
       }
     });
-    socket.on("leave-ride-room", (rideId) => socket.leave(`ride:${rideId}`));
+    socket.on("leave-ride-room", async (rideId) => {
+      const userId = socket.user._id;
+
+      const isAllowed = await validateRideAccess(rideId, userId);
+
+      if (!isAllowed) {
+        return socket.emit("error", {
+          message: "You are not allowed to join this room",
+        });
+      }
+
+      socket.leave(`ride:${rideId}`);
+    });
 
     // captain location update
-    socket.on(
-      "update-captain-location",
-      async ({ location, captainId, rideId }) => {
+    socket.on("update-captain-location", async ({ location, rideId }) => {
+      try {
         if (!location?.lat || !location?.lng) {
-          return socket.emit("error", { message: "Invalid location" });
+          return socket.emit("error", {
+            message: "Invalid location",
+          });
         }
+
+        if (socket.user.role !== "captain") {
+          return socket.emit("error", {
+            message: "Only captains allowed",
+          });
+        }
+
+        const captainId = socket.user._id;
 
         await publishToQueue("captain-update", {
           _id: captainId,
@@ -105,10 +147,20 @@ async function initializeSocket(server) {
           },
         });
 
-        if (rideId)
+        if (rideId) {
+          const isAllowed = await validateRideAccess(rideId, userId);
+
+          if (!isAllowed) {
+            return socket.emit("error", {
+              message: "You are not allowed to join this room",
+            });
+          }
           io.to(`ride:${rideId}`).emit("captain-live-location", location);
-      },
-    );
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
 
     socket.on("disconnect", (reason) => {
       console.log(`Socket ${socket.id} disconnected because: ${reason}`);
@@ -133,10 +185,13 @@ async function initializeSocket(server) {
     });
 
     // --- Call Signaling Events ---
-    socket.on("call-user", ({ rideId, callerId, receiverId }) => {
-      console.log(
-        `Call initiated by ${callerId} for ${receiverId} in ride: ${rideId}`,
-      );
+    socket.on("call-user", async ({ rideId }) => {
+      const participants = await getCallParticipants(rideId, socket);
+
+      if (!participants) return;
+
+      const { callerId, receiverId } = participants;
+
       if (rideId)
         io.to(`ride:${rideId}`).emit("incoming-call", {
           rideId,
@@ -145,10 +200,13 @@ async function initializeSocket(server) {
         });
     });
 
-    socket.on("accept-call", ({ rideId, callerId, receiverId }) => {
-      console.log(
-        `Call accepted by ${receiverId} for ${callerId} in ride: ${rideId}`,
-      );
+    socket.on("accept-call", async ({ rideId }) => {
+      const participants = await getCallParticipants(rideId, socket);
+
+      if (!participants) return;
+
+      const { callerId, receiverId } = participants;
+
       if (rideId)
         io.to(`ride:${rideId}`).emit("call-accepted", {
           rideId,
@@ -157,10 +215,13 @@ async function initializeSocket(server) {
         });
     });
 
-    socket.on("reject-call", ({ rideId, callerId, receiverId }) => {
-      console.log(
-        `Call rejected by ${receiverId} for ${callerId} in ride: ${rideId}`,
-      );
+    socket.on("reject-call", async ({ rideId }) => {
+      const participants = await getCallParticipants(rideId, socket);
+
+      if (!participants) return;
+
+      const { callerId, receiverId } = participants;
+
       if (rideId)
         io.to(`ride:${rideId}`).emit("call-rejected", {
           rideId,
@@ -169,8 +230,13 @@ async function initializeSocket(server) {
         });
     });
 
-    socket.on("end-call", ({ rideId, callerId, receiverId }) => {
-      console.log(`Call ended in ride: ${rideId}`);
+    socket.on("end-call", async ({ rideId }) => {
+      const participants = await getCallParticipants(rideId, socket);
+
+      if (!participants) return;
+
+      const { callerId, receiverId } = participants;
+
       if (rideId)
         io.to(`ride:${rideId}`).emit("call-ended", {
           rideId,
@@ -181,10 +247,10 @@ async function initializeSocket(server) {
   });
 }
 
-function sendMessageToSocketId(socketId, event, message) {
+function sendMessageToSocketId(socketKey, event, message) {
   if (!io) return console.error("Socket not initialized");
-  console.log("inside send message to socket id", socketId, event, message);
-  io.to(socketId).emit(event, message);
+  console.log("inside send message to socket id", socketKey, event, message);
+  io.to(socketKey).emit(event, message);
 }
 
 module.exports = { initializeSocket, sendMessageToSocketId };

@@ -11,7 +11,10 @@ async function initializeSocket(server) {
     cors: { origin: "*" }
   });
 
+
+
   // Redis adapter for scaling
+  // const pubClient = createClient({ url: "redis://redis:6379" });
   const pubClient = createClient({ url: "redis://localhost:6379" });
   const subClient = pubClient.duplicate();
 
@@ -128,10 +131,10 @@ socket.on("debug-room", (rideId) => {
 
 }
 
-function sendMessageToSocketId(socketId, event, message) {
+function sendMessageToSocketId(socketKey, event, message) {
   if (!io) return console.error("Socket not initialized");
-  console.log("inside send message to socket id",socketId,event,message);
-  io.to(socketId).emit(event, message);
+  console.log("inside send message to socket id",socketKey,event,message);
+  io.to(socketKey).emit(event, message);
 }
 
 module.exports = { initializeSocket, sendMessageToSocketId };

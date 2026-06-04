@@ -2,6 +2,7 @@ require('dotenv').config();
 const {v4: uuidv4} = require('uuid')
 const amqp = require('amqplib');
 const AppError = require("../utils/appError");
+const rideModel = require('../models/ride.model');
 
 let channel;
 const RABBITMQ_URL = process.env.RABBIT_URL
@@ -82,9 +83,22 @@ async function subscribeToQueue(queue) {
 
             console.log("Received:", queue);
 
-            // Example logic
-            if (queue === "isBlackList-captain") {
-                response = { success: true };
+            if (queue === "ride-payment-success") {
+                try {
+                    await rideModel.findByIdAndUpdate("rideId",{$set: {"payment.status": "completed"}})
+                    response = { success: true };
+                } catch (error) {
+                    response = { success: false, error: error.message };
+                }
+            }
+            else if(queue === "ride-payment-failed"){
+                try {
+                    await rideModel.findByIdAndUpdate("rideId",{$set: {"payment.status": "failed", "payment.reason": data.reason}})
+                    response = { success: true };
+                } catch (error) {
+                    response = { success: false, error: error.message };
+                }
+                
             }
 
             channel.sendToQueue(

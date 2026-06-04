@@ -6,24 +6,34 @@ const { publishToQueue } = require("../services/rabbitmq/publish");
 module.exports.authUser = async (req,res,next)=>{
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
     console.log("Token: ",token);
-    if(!token){
-                    console.log("inside token check")
-        return res.status(401).json({message:"Unauthorized access"})
-    }
+if (!token) {
+    console.log("inside token check");
+    return res.status(401).json({
+        message: "Token missing"
+    });
+}
     // const isBlackListed = await blackListModel.findOne({token})
     console.log("inside auth user")
     const isBlackListed = await publishToQueue('isBlackList-user',{token})
-    console.log(isBlackListed,"sdfsdf")
-    
-    if(isBlackListed){
-                    console.log("inside blacklist check")
-        return res.status(401).json({message:"Unauthorised"});
-    }
+console.log(
+  "Blacklist Result:",
+  isBlackListed,
+  typeof isBlackListed
+);
+if (isBlackListed) {
+    return res.status(401).json({
+        message: "Token blacklisted"
+    });
+}
     try {
+        console.log("TOKEN:", token);
+
+const decodedRaw = jwt.decode(token);
+console.log("DECODED RAW:", decodedRaw);
         const decode =  jwt.verify(token,process.env.JWT_SECRET);
         if (decode.role !== 'user') {
             console.log("inside user check")
-            return res.status(401).json({message:"Unauthorized access"});
+            return res.status(401).json({ message: error.message});
         }
         // const user =await userModel.findById(decode._id);
         const user =await publishToQueue('get-user',{_id: decode._id});
@@ -49,7 +59,12 @@ console.log(user,"user")
         return next()
     
     } catch (error) {
-         return res.status(401).json({message:"Unauthorized access"})
+       console.error("AUTH ERROR:", error);
+
+    return res.status(401).json({
+        message: error.message,
+        stack: error.stack
+    });
     
     }
 }

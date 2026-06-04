@@ -8,19 +8,32 @@ function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("captain-token");
+    if (!token) return;
     // Initialize socket connection
-    const newSocket = io(`${import.meta.env.VITE_BASE_URL}`,{
-      auth:{
-        token: localStorage.getItem("token")||localStorage.getItem("captain-token")
-      }
+    const newSocket = io(`${import.meta.env.VITE_BASE_URL}`, {
+      auth: {
+        token,
+      },
+    });
+    newSocket.on("connect_error", (err) => {
+      console.error("Socket connection failed:", err.message);
     });
 
     newSocket.on("connect", () => {
-      console.log("Connected to server",newSocket.id);
+      console.log("Connected to server", newSocket.id);
     });
 
     newSocket.on("disconnect", () => {
       console.log("Disconnected from server");
+    });
+    newSocket.io.on("reconnect", (attempt) => {
+      console.log("Reconnected", attempt);
+    });
+
+    newSocket.io.on("reconnect_attempt", () => {
+      console.log("Trying reconnect...");
     });
 
     setSocket(newSocket);

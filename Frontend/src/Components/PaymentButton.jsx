@@ -2,7 +2,7 @@ import React from "react";
 import axios from "axios";
 import axiosInstance from "../api/axiosInstance";
 
-const PaymentButton = ({ rideId, userId, amount }) => {
+const PaymentButton = ({ rideId, userId, amount, paymentStatus }) => {
 
   // Load Razorpay SDK
   const loadRazorpay = () => {
@@ -26,6 +26,7 @@ const PaymentButton = ({ rideId, userId, amount }) => {
   const handlePayment = async () => {
     console.log("KEY:", import.meta.env.VITE_RAZORPAY_KEY_ID);
     const isLoaded = await loadRazorpay();
+    console.log(userId,rideId,amount)
     if (!isLoaded) {
       alert("Razorpay SDK failed to load");
       return;
@@ -53,7 +54,7 @@ const PaymentButton = ({ rideId, userId, amount }) => {
 
         handler: function (response) {
           console.log("Payment Success:", response);
-          alert("Payment processing...");
+          // alert("Payment processing...");
         },
 
         prefill: {
@@ -88,8 +89,8 @@ const PaymentButton = ({ rideId, userId, amount }) => {
   };
 
   return (
-    <button className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 transition-all font-semibold text-sm text-white focus:outline-none shadow-sm" onClick={handlePayment}>
-      Pay ₹{amount}
+    <button disabled={paymentStatus === "paid"} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 transition-all font-semibold text-sm text-white focus:outline-none shadow-sm" onClick={handlePayment}>
+      {paymentStatus === "paid" ? "Paid" : "Pay ₹" + amount}
     </button>
   );
 };

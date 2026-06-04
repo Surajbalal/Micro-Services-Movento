@@ -5,6 +5,8 @@ const asyncHandler = require("../utils/asyncHandler");
 
 exports.generateToken = asyncHandler(async (req, res, next) => {
   const { channelName, uid } = req.body;
+  console.log("channelName: ", channelName);
+  console.log("uid: ", uid);
 
   if (!channelName) {
     throw new AppError("channelName is required", "BAD_REQUEST", 400);
