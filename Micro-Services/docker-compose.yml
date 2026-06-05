@@ -28,7 +28,7 @@ services:
     ports:
       - "3004:3004"
     env_file:
-      - ./auth/.env
+      - /home/ubuntu/config/auth-service.env
     depends_on:
       - redis
     networks:
@@ -40,7 +40,7 @@ services:
     ports:
       - "3001:3001"
     env_file:
-      - ./user/.env
+      - /home/ubuntu/config/user-service.env
     depends_on:
       - redis
     networks:
@@ -52,7 +52,7 @@ services:
     ports:
       - "3002:3002"
     env_file:
-      - ./captain/.env
+      - /home/ubuntu/config/captain-service.env
     depends_on:
       - redis
     networks:
@@ -64,7 +64,7 @@ services:
     ports:
       - "3003:3003"
     env_file:
-      - ./ride/.env
+      - /home/ubuntu/config/ride-service.env
     depends_on:
       - redis
     networks:
@@ -76,7 +76,7 @@ services:
     ports:
       - "3006:3006"
     env_file:
-      - ./payment/.env
+      - /home/ubuntu/config/payment-service.env
     depends_on:
       - redis
     networks:
@@ -87,7 +87,7 @@ services:
     ports:
       - "3005:3005"
     env_file:
-      - ./call-service/.env
+      - /home/ubuntu/config/call-service.env
     depends_on:
       - redis
     networks:
