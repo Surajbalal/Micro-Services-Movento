@@ -11,7 +11,7 @@ services:
     build: ./gateway
     container_name: gateway
     ports:
-      - "3000:3000"
+      - "80:80"
     depends_on:
       - auth
       - user
