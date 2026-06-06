@@ -6,6 +6,6 @@ COPY nginx.prod.conf /etc/nginx/nginx.conf
 
 
 
-EXPOSE 3000
+EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
