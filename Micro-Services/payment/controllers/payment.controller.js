@@ -19,12 +19,6 @@ console.log("check request body", req.body);
     amount,
     orderId: order.id,
   });
-   // Publish event to your system
-    publishToQueue("ride-payment-success", {
-      rideId: payment.rideId,
-      userId: payment.userId,
-      amount: payment.amount
-    });
 
 
 
