@@ -10,7 +10,7 @@ router.post('/create',authUser,
     body('destination').isString().isLength({min:3}).withMessage('Invalid destination address'),
     body('vehicleType').isString().isIn(['auto', 'car', 'motorcycle']).withMessage('Invalid vehicleType'),rideController.createRide
 )
-router.get('/get-fare',authUser,
+router.get('/get-fare',
     query('pickup').isString().isLength({min:3}).withMessage('Invalid pickup address'),
     query('destination').isString().isLength({min:3}).withMessage('Invalid destination address'),rideController.getfare)
 

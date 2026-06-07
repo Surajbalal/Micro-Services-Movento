@@ -16,6 +16,7 @@ router.get('/get-distance-time',
     
 router.get('/get-suggestions',
     query('input').isString().isLength({min: 3})
-    ,authUser,mapController.getAutoCompleteSuggestions);
+    ,mapController.getAutoCompleteSuggestions);
+
     
 module.exports = router;
