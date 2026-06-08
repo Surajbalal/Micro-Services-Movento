@@ -1,5 +1,6 @@
 const { resolve } = require("path");
 const ampq = require('amqplib');
+const { v4: uuidv4 } = require("uuid");
 const {RABBIT_URL} = require("../config/config");
 const paymentModel = require("../models/payment.model");
 let channel; 
