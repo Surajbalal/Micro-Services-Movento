@@ -161,3 +161,64 @@ module.exports.getCaptainInTheRadius = async (lat, lng, radius,vehicleType) => {
     throw new AppError(error.message, "RABBITMQ_ERROR", 500);
   }
 };
+
+module.exports.getRoutePolyline = async (origin, destination) => {
+  if (!origin || !destination) {
+    throw new AppError("Origin and destination are required", "BAD_REQUEST", 400);
+  }
+
+  const coordRegex = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
+
+  const parseLocation = (input) => {
+    if (coordRegex.test(input)) {
+      const [lat, lng] = input.split(',').map(Number);
+      return {
+        latLng: {
+          latitude: lat,
+          longitude: lng,
+        },
+      };
+    } else {
+      return {
+        address: input,
+      };
+    }
+  };
+
+  const originLocation = parseLocation(origin);
+  const destLocation = parseLocation(destination);
+
+  try {
+    const response = await axios.post(
+      "https://routes.googleapis.com/directions/v2:computeRoutes",
+      {
+        origin: { location: originLocation },
+        destination: { location: destLocation },
+        travelMode: "DRIVE",
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey ? apiKey.trim() : "",
+          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+        },
+      }
+    );
+
+    const routes = response.data?.routes;
+    if (!routes || routes.length === 0) {
+      throw new AppError("No routes found", "MAPS_API_ERROR", 404);
+    }
+
+    return {
+      encodedPolyline: routes[0].polyline.encodedPolyline,
+      distanceMeters: routes[0].distanceMeters,
+      duration: routes[0].duration,
+    };
+  } catch (error) {
+    console.error("Error computing route:", error.message);
+    if (error instanceof AppError) throw error;
+    throw new AppError("Unable to fetch route details", "MAPS_API_ERROR", 500);
+  }
+};
+

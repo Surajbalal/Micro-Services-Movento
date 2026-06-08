@@ -53,3 +53,19 @@ module.exports.getAutoCompleteSuggestions = async(req,res,next)=>{
         res.status(500).json({message: 'Internal server error'})
     }
 }
+
+module.exports.getRoutePolyline = async (req, res, next) => {
+    try {
+        const errors = validationResult(req);
+        if(!errors.isEmpty()){
+            return res.status(400).json({errors: errors.array()});
+        }
+
+        const { origin, destination } = req.query;
+        const routeData = await mapService.getRoutePolyline(origin, destination);
+        return res.status(200).json(routeData);
+    } catch (error) {
+        console.error("Failed to compute route polyline:", error.message);
+        return res.status(500).json({ message: "Failed to fetch route polyline" });
+    }
+};

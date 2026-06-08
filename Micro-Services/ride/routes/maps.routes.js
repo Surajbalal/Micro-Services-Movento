@@ -17,5 +17,10 @@ router.get('/get-distance-time',
 router.get('/get-suggestions',
     query('input').isString().isLength({min: 3})
     ,mapController.getAutoCompleteSuggestions);
+
+router.get('/get-route-polyline',
+    query("origin").isString().isLength({min:1}),
+    query("destination").isString().isLength({min:1})
+    ,auth,mapController.getRoutePolyline);
     
 module.exports = router;
