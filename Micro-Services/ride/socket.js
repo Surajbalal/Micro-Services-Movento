@@ -26,14 +26,18 @@ async function initializeSocket(server) {
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token;
-      if (!token) return next(new Error("Authentication error"));
+      console.log("[Socket Auth] Incoming connection. Token prefix:", token ? `${token.substring(0, 15)}...` : "none");
+      if (!token) {
+        console.error("[Socket Auth] Connection rejected: Token missing");
+        return next(new Error("Authentication error"));
+      }
 
       const user = await authenticateUser(token);
+      console.log("[Socket Auth] User authenticated successfully. User ID:", user._id, "Role:", user.role);
       socket.user = user;
       next();
     } catch (err) {
-      console.error("Socket auth error:", err);
-
+      console.error("[Socket Auth] Connection rejected due to error:", err.message || err);
       next(new Error("Unauthorized"));
     }
   });
