@@ -100,11 +100,11 @@ console.log(session,"session id");
 };
 
 module.exports.refreshToken = async (req, res) => {
-  // ── DEBUG (remove after fixing) ──────────────────────────────────────────
+  // DEBUG 
   console.log("=== REFRESH TOKEN ===");
   console.log("req.headers.cookie :", req.headers.cookie);
   console.log("req.cookies        :", req.cookies);
-  // ─────────────────────────────────────────────────────────────────────────
+
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
