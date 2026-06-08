@@ -3,6 +3,7 @@ const {v4: uuidv4} = require('uuid')
 const amqp = require('amqplib');
 const AppError = require("../utils/appError");
 const rideModel = require('../models/ride.model');
+const { sendMessageToSocketId } = require('../socket/socket');
 
 let channel;
 const RABBITMQ_URL = process.env.RABBIT_URL
@@ -85,20 +86,59 @@ async function subscribeToQueue(queue) {
 
             if (queue === "ride-payment-success") {
                 try {
-                    await rideModel.findByIdAndUpdate("rideId",{$set: {"payment.status": "completed"}})
+                    console.log("PAYMENT SUCCESS DATA:", data);
+                    const updatedRide = await rideModel.findByIdAndUpdate(
+                        data.rideId,
+                        { $set: { "payment.status": "paid" } },
+                        { new: true }
+                    );
+                    if (updatedRide) {
+                        // Notify both user and captain in real-time
+                        sendMessageToSocketId(
+                            `user:${updatedRide.user}`,
+                            "payment-status-updated",
+                            { rideId: updatedRide._id, paymentStatus: "paid" }
+                        );
+                        if (updatedRide.captain) {
+                            sendMessageToSocketId(
+                                `captain:${updatedRide.captain}`,
+                                "payment-status-updated",
+                                { rideId: updatedRide._id, paymentStatus: "paid" }
+                            );
+                        }
+                    }
                     response = { success: true };
                 } catch (error) {
+                    console.error("ride-payment-success handler error:", error);
                     response = { success: false, error: error.message };
                 }
             }
             else if(queue === "ride-payment-failed"){
                 try {
-                    await rideModel.findByIdAndUpdate("rideId",{$set: {"payment.status": "failed", "payment.reason": data.reason}})
+                    const updatedRide = await rideModel.findByIdAndUpdate(
+                        data.rideId,
+                        { $set: { "payment.status": "failed", "payment.reason": data.reason } },
+                        { new: true }
+                    );
+                    if (updatedRide) {
+                        sendMessageToSocketId(
+                            `user:${updatedRide.user}`,
+                            "payment-status-updated",
+                            { rideId: updatedRide._id, paymentStatus: "failed" }
+                        );
+                        if (updatedRide.captain) {
+                            sendMessageToSocketId(
+                                `captain:${updatedRide.captain}`,
+                                "payment-status-updated",
+                                { rideId: updatedRide._id, paymentStatus: "failed" }
+                            );
+                        }
+                    }
                     response = { success: true };
                 } catch (error) {
+                    console.error("ride-payment-failed handler error:", error);
                     response = { success: false, error: error.message };
                 }
-                
             }
 
             channel.sendToQueue(

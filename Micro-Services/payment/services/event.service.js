@@ -24,6 +24,7 @@ async function connectToRabbitMQ(){
 
 async function publishToQueue (queue, message){
   if (!channel) return console.error("No channel");
+  console.log("publishToQueue hit",queue,message)
   const correlationId = uuidv4();
   const replyQueue = await channel.assertQueue("",{
 
