@@ -15,8 +15,8 @@ async function initializeSocket(server) {
   });
 
   // Redis adapter for scaling
-  // const pubClient = createClient({ url: "redis://redis:6379" });
-  const pubClient = createClient({ url: "redis://localhost:6379" });
+  const pubClient = createClient({ url: "redis://redis:6379" });
+  // const pubClient = createClient({ url: "redis://localhost:6379" });
   const subClient = pubClient.duplicate();
 
   await pubClient.connect();
