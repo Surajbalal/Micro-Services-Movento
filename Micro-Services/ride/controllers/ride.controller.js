@@ -198,3 +198,28 @@ module.exports.rateRide = asyncHandler(async (req, res) => {
     .status(200)
     .json({ message: "Rating submitted successfully", ride });
 });
+
+module.exports.getMyRides = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { status } = req.query;
+
+  const filter = { user: userId };
+
+  // Optional status filter: ?status=completed or ?status=active
+  if (status) {
+    if (status === "active") {
+      filter.status = { $in: ["pending", "accepted", "ongoing"] };
+    } else if (["pending", "accepted", "ongoing", "completed", "cancelled"].includes(status)) {
+      filter.status = status;
+    }
+  }
+
+  const rides = await rideModel
+    .find(filter)
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+  return res.status(200).json({ rides });
+});
+

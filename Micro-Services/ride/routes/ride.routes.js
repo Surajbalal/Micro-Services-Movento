@@ -43,4 +43,5 @@ router.post('/rate', auth,
     body('feedback').optional().isString().withMessage('Feedback must be a string'),
     rideController.rateRide
 )
+router.get('/my-rides', auth, rideController.getMyRides)
 module.exports = router;
