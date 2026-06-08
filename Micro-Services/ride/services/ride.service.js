@@ -1,5 +1,5 @@
 const rideModel = require("../models/ride.model");
-const { sendMessageToSocketId } = require("../socket/socket");
+// NOTE: sendMessageToSocketId is required dynamically inside functions to avoid circular dependency
 const mapService = require("./maps.service");
 const crypto = require("crypto");
 const { publishToQueue, publishEvent } = require("./rabbit");
@@ -165,6 +165,7 @@ module.exports.startRide = async ({ rideId, otp }) => {
   console.log(`--------------user:${user._id}-------------------`)
 
   // Send updated ride with full data
+  const { sendMessageToSocketId } = require("../socket/socket");
   sendMessageToSocketId(`user:${user._id}`, "ride-started", rideData);
 
   return rideData;
@@ -229,6 +230,7 @@ module.exports.endRide = async ({ rideId, captain }) => {
     //   message: `your ride has been completed successfully`,
     // });
 
+    const { sendMessageToSocketId } = require("../socket/socket");
     sendMessageToSocketId(`captain:${captain._id}`, "ride-ended", {
       rideId: ride._id,
       message: `your ride has been completed successfully`,
@@ -283,7 +285,7 @@ module.exports.getRide = async (query) => {
     .select("+otp")
     .lean();
   if (!rideData) {
-    throw new AppError("Ride not found", "NOT_FOUND", 404);
+    return null;
   }
   let ride;
   if (!query.captainId) {
@@ -373,6 +375,7 @@ module.exports.cancelRide = async ({
   }
 
   // notify canceller
+  const { sendMessageToSocketId } = require("../socket/socket");
   if (cancellerData?.socketId) {
     const socketKey =
       cancelledBy === "user"

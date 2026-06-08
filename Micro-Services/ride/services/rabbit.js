@@ -3,7 +3,7 @@ const {v4: uuidv4} = require('uuid')
 const amqp = require('amqplib');
 const AppError = require("../utils/appError");
 const rideModel = require('../models/ride.model');
-const { sendMessageToSocketId } = require('../socket/socket');
+// NOTE: sendMessageToSocketId is required dynamically inside handlers to avoid circular dependency
 
 let channel;
 const RABBITMQ_URL = process.env.RABBIT_URL
@@ -86,6 +86,7 @@ async function subscribeToQueue(queue) {
 
             if (queue === "ride-payment-success") {
                 try {
+                    const { sendMessageToSocketId } = require('../socket/socket');
                     console.log("PAYMENT SUCCESS DATA:", data);
                     const updatedRide = await rideModel.findByIdAndUpdate(
                         data.rideId,
@@ -115,6 +116,7 @@ async function subscribeToQueue(queue) {
             }
             else if(queue === "ride-payment-failed"){
                 try {
+                    const { sendMessageToSocketId } = require('../socket/socket');
                     const updatedRide = await rideModel.findByIdAndUpdate(
                         data.rideId,
                         { $set: { "payment.status": "failed", "payment.reason": data.reason } },

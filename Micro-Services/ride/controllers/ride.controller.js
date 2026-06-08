@@ -2,7 +2,7 @@ const { validationResult, ExpressValidator } = require("express-validator");
 const rideService = require("../services/ride.service");
 const mapService = require("../services/maps.service");
 const rideModel = require("../models/ride.model");
-const { sendMessageToSocketId } = require("../socket/socket");
+// NOTE: sendMessageToSocketId is required dynamically inside functions to avoid circular dependency
 const { publishToQueue } = require("../services/rabbit");
 const asyncHandler = require("../utils/asyncHandler");
 const CaptainDailyStatsModel = require("../models/CaptainDailyStats.model");
@@ -60,6 +60,7 @@ module.exports.createRide = asyncHandler(async (req, res) => {
 
   const userDetails = await publishToQueue("get-user", { _id: req.user._id });
   // console.log("this is functionality check",findCaptainInRadius,ride);
+  const { sendMessageToSocketId } = require("../socket/socket");
   findCaptainInRadius.map((captain) => {
     console.log("-  -------inside map function-----------",captain._id)
     sendMessageToSocketId(`captain:${captain._id}`, "new-ride", {
@@ -94,6 +95,7 @@ module.exports.confirmRide = asyncHandler(async (req, res) => {
   const ride = await rideService.confirmRide(rideId, captainId);
   // console.log("this is ride details",ride);
   console.log("this is ride details", ride.user.socketId);
+  const { sendMessageToSocketId } = require("../socket/socket");
   sendMessageToSocketId(`user:${ride.user._id}`, "ride-confirm", ride);
 
   return res.status(200).json(ride);
@@ -150,6 +152,10 @@ module.exports.getRide = asyncHandler(async (req, res) => {
       : { userId: req.user._id };
 
   const ride = await rideService.getRide(query);
+
+  if (!ride) {
+    return res.status(200).json({ activeRide: null });
+  }
 
   return res.status(200).json(ride);
 });
