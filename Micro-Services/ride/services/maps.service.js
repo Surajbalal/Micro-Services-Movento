@@ -188,6 +188,9 @@ module.exports.getRoutePolyline = async (origin, destination) => {
   const originLocation = parseLocation(origin);
   const destLocation = parseLocation(destination);
 
+  console.log("[maps.service.js] Origin:", origin);
+  console.log("[maps.service.js] Destination:", destination);
+
   try {
     const response = await axios.post(
       "https://routes.googleapis.com/directions/v2:computeRoutes",
@@ -205,16 +208,22 @@ module.exports.getRoutePolyline = async (origin, destination) => {
       }
     );
 
+    console.log("[maps.service.js] Google Routes API response:", JSON.stringify(response.data, null, 2));
+
     const routes = response.data?.routes;
     if (!routes || routes.length === 0) {
       throw new AppError("No routes found", "MAPS_API_ERROR", 404);
     }
 
-    return {
+    const result = {
       encodedPolyline: routes[0].polyline.encodedPolyline,
       distanceMeters: routes[0].distanceMeters,
       duration: routes[0].duration,
     };
+
+    console.log("[maps.service.js] Returned encoded polyline:", result.encodedPolyline);
+
+    return result;
   } catch (error) {
     console.error("Error computing route:", error.message);
     if (error instanceof AppError) throw error;
