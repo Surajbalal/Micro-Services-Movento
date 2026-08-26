@@ -46,7 +46,7 @@ def pushImage(){
        sh '''
           cd Micro-Services
        
-       docker compose push'
+       docker compose push
        '''
 }
 return this
