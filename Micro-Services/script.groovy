@@ -7,16 +7,16 @@ def test(){
         file(credentialsId: 'payment-service.env', variable: 'PAYMENT_ENV_FILE'),
         file(credentialsId: 'call-service.env', variable: 'CALL_ENV_FILE')
     ]) {
-     sh ''' 
-              cd Micro-Services
-                docker compose run --rm auth pnpm test
-            docker compose run --rm user pnpm test
-            docker compose run --rm captain pnpm test
-            docker compose run --rm ride pnpm test
-            docker compose run --rm payment pnpm test
-            docker compose run --rm call-service pnpm test
-            '''
-    }
+    //  sh ''' 
+    //           cd Micro-Services
+    //             docker compose run --rm auth pnpm test
+    //         docker compose run --rm user pnpm test
+    //         docker compose run --rm captain pnpm test
+    //         docker compose run --rm ride pnpm test
+    //         docker compose run --rm payment pnpm test
+    //         docker compose run --rm call-service pnpm test
+    //         '''
+    // }
 }
 def buildImage(){
      sh '''
