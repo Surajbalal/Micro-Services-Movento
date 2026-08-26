@@ -11,22 +11,30 @@ pipeline{
         }
         stage('test'){
             steps{
+                script {
                gv.test()
+                }
             }
         }
         stage('Build Image'){
             steps{
+                script {
                gv.buildImage()
+                }
             }
         }
         stage('Login To Docker Hub'){
             steps{
+                script {
                 gv.dockerLogin()
+                }
             }
         }
         stage('Push Images'){
             steps{
+                script {
                 gv.pushImage()
+                }
              
             }
         }
