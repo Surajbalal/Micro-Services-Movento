@@ -12,14 +12,14 @@ def buildImage(){
      sh 'docker compose build'
 }
 def dockerLogin(){
-    withCredential([
+    withCredentials([
                     usernamePassword(
-                        credentialsId:'docker-login',
-                        usernameVariable:'DOCKER_USER',
-                        passwordVarabile:'DOCKER_PASSWORD'
+                        credentialsId: 'docker-login',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVarabile: 'DOCKER_PASSWORD'
                     )
                 ]){
-                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --DOCKER_PASSWORD-stdin'
+                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin'
                 }
 }
 def pushImage(){
