@@ -16,7 +16,7 @@ def dockerLogin(){
                     usernamePassword(
                         credentialsId: 'docker-login',
                         usernameVariable: 'DOCKER_USER',
-                        passwordVarabile: 'DOCKER_PASSWORD'
+                        passwordVariable: 'DOCKER_PASSWORD'
                     )
                 ]){
                     sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin'
