@@ -1,0 +1,33 @@
+pipeline{
+    agent any 
+    stages{
+        stage('init'){
+            steps{
+                script{
+                    gv = load"script.groovy"
+                }
+            }
+        }
+        stage('test'){
+            steps{
+               gv.test()
+            }
+        }
+        stage('Build Image'){
+            steps{
+               gv.buildImage()
+            }
+        }
+        stage('Login To Docker Hub'){
+            steps{
+                gv.dockerLogin()
+            }
+        }
+        stage('Push Images'){
+            steps{
+                gv.pushImage()
+             
+            }
+        }
+    }
+}

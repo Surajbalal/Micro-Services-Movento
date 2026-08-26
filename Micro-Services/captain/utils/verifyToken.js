@@ -16,7 +16,6 @@ const verifyKey = async(token)=>{
         });
 
         return decoded
-        
     } catch (error) {
     console.log("VERIFY ERROR NAME:", error.name);
     console.log("VERIFY ERROR:", error);
