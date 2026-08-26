@@ -1,4 +1,4 @@
-df test(){
+def test(){
      sh ''' 
                 docker compose run --rm auth pnpm test
             docker compose run --rm user pnpm test
@@ -8,10 +8,10 @@ df test(){
             docker compose run --rm call-service pnpm test
             '''
 }
-df buildImage(){
+def buildImage(){
      sh 'docker compose build'
 }
-df dockerLogin(){
+def dockerLogin(){
     withCredential([
                     usernamePassword(
                         credentialsId:'docker-login',
@@ -22,7 +22,7 @@ df dockerLogin(){
                     sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --DOCKER_PASSWORD-stdin'
                 }
 }
-df pushImage(){
+def pushImage(){
        sh 'docker compose push'
 }
 return this
