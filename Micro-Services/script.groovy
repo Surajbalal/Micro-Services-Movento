@@ -1,5 +1,6 @@
 def test(){
      sh ''' 
+              cd Micro-Services
                 docker compose run --rm auth pnpm test
             docker compose run --rm user pnpm test
             docker compose run --rm captain pnpm test
@@ -9,7 +10,10 @@ def test(){
             '''
 }
 def buildImage(){
-     sh 'docker compose build'
+     sh '''
+       cd Micro-Services
+     docker compose build
+     '''
 }
 def dockerLogin(){
     withCredentials([
@@ -27,6 +31,10 @@ def dockerLogin(){
                 }
 }
 def pushImage(){
-       sh 'docker compose push'
+       sh '''
+          cd Micro-Services
+       
+       docker compose push'
+       '''
 }
 return this
