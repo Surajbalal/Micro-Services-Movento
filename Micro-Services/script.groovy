@@ -30,7 +30,7 @@ def buildImage(){
 def dockerLogin(){
     withCredentials([
                     usernamePassword(
-                        credentialsId: 'docker-login',
+                        credentialsId: 'Docker-login',
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASSWORD'
                     )
