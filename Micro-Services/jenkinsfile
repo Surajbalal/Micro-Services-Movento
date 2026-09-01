@@ -1,3 +1,4 @@
+@Library('jenkins-shared-library')
 def gv
 pipeline{
     agent any 
@@ -19,21 +20,21 @@ pipeline{
         stage('Build Image'){
             steps{
                 script {
-               gv.buildImage()
+               buildImage()
                 }
             }
         }
         stage('Login To Docker Hub'){
             steps{
                 script {
-                gv.dockerLogin()
+                dockerLogin()
                 }
             }
         }
         stage('Push Images'){
             steps{
                 script {
-                gv.pushImage()
+                pushImage()
                 }
              
             }
