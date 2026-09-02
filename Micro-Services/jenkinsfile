@@ -1,4 +1,3 @@
-// efdgsefdgsdfgsedf
 def gv
 pipeline{
     agent any 
