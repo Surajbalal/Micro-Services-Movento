@@ -3,6 +3,9 @@
 def gv
 pipeline{
     agent any 
+    tools{
+        nodejs: 'NodeJS'
+    }
     stages{
         stage('init'){
             steps{
@@ -19,6 +22,14 @@ pipeline{
                 }
             }
         }
+        stage('Check Node') {
+    steps {
+        sh 'which node'
+        sh 'node --version'
+        sh 'which npm'
+        sh 'npm --version'
+    }
+}
         stage('Increment Version'){
             steps{
                  script{
