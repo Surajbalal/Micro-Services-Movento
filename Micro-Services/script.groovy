@@ -80,7 +80,7 @@ def incrementVersion(){
             echo "Incrementing version for ${service}"
 
             dir(service){
-                sh 'npm version patch'
+                sh 'npm version patch --no-git-tag-version'
                 def packageJson = readJSON file : 'package.json'
                 def version = packageJson.version
 
