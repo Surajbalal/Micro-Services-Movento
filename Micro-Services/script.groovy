@@ -178,7 +178,7 @@ def pushVersionUpdate(){
    git config user.email "surajbalal786@gmail.com"
    '''
 
-   sshagent(['github-ssh']){
+   sshagent(['git']){
     sh '''
         git push origin HEAD
         git push origin --tags
