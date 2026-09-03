@@ -21,8 +21,8 @@
 def test() {
     echo 'Tests temporarily disabled'
 }
-def IncrementVersion(){
-    sh 'npm version patch'
+def incrementVersion(){
+    sh 'pnpm version patch'
     def packageJson = readJSON file: 'package.json'
     def version = packageJson.version
 

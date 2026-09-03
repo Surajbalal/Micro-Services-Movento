@@ -21,8 +21,8 @@ pipeline{
         }
         stage('Increment Version'){
             steps{
-                script{
-                    gv.IncrementVersion()
+                 script{
+                    gv.incrementVersion()
                 }
             }
         }
@@ -46,6 +46,13 @@ pipeline{
                 gv.pushImage()
                 }
              
+            }
+        }
+        stage('Push Version Update'){
+            steps{
+                script{
+                    gv.pushVersionUpdate()
+                }
             }
         }
     }
