@@ -44,6 +44,7 @@ def getChangedServices() {
 }
 def test() {
     echo 'Tests temporarily disabled'
+echo 'Tests temporarily disabled - TEST'
 }
 def incrementVersion(){
     // sh 'npm version patch'
@@ -126,6 +127,7 @@ def pushImage() {
     ]) {
         sh '''
             cd Micro-Services
+
             docker compose push
         '''
     }
