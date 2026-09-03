@@ -109,8 +109,12 @@ def buildImage() {
         dir('Micro-Services'){
             changedServices.each{ service -> 
 
+                def jsonFile = readJSON file : "${service}/package.json"
+                def version = jsonFile.version
                 echo "Building ${service}"
-                sh "docker compose build ${service}"
+                withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"]){
+                    sh "docker compose build ${service}"
+                }
             }
 
         }
