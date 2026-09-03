@@ -22,14 +22,25 @@ def test() {
     echo 'Tests temporarily disabled'
 }
 def incrementVersion(){
-    sh 'npm version patch'
-    def packageJson = readJSON file: 'package.json'
-    def version = packageJson.version
+    // sh 'npm version patch'
+    // def packageJson = readJSON file: 'package.json'
+    // def version = packageJson.version
 
-    env.IMAGE_VERSION = "${version}-${BUILD_NUMBER}"
+    // env.IMAGE_VERSION = "${version}-${BUILD_NUMBER}"
 
-    echo "New version... ${version}"
-    echo "New image version... ${env.IMAGE_VERSION}"
+    // echo "New version... ${version}"
+    // echo "New image version... ${env.IMAGE_VERSION}"
+    dir('Micro-Services'){
+        sh '''
+            for service in */; do
+                if [ -f "$service/package.json"]; then
+                    cd "$service"
+                    npm version patch
+                    cd ..
+                fi
+            done
+        '''
+    }
 }
 def buildImage() {
     withCredentials([
