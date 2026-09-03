@@ -21,6 +21,16 @@
 def test() {
     echo 'Tests temporarily disabled'
 }
+def IncrementVersion(){
+    sh 'npm version patch'
+    def packageJson = readJSON file: 'package.json'
+    def version = packageJson.version
+
+    env.IMAGE_VERSION = "${version}-${BUILD_NUMBER}"
+
+    echo "New version... ${version}"
+    echo "New image version... ${env.IMAGE_VERSION}"
+}
 def buildImage() {
     withCredentials([
         file(credentialsId: 'auth-service.env', variable: 'AUTH_ENV_FILE'),
@@ -65,5 +75,18 @@ def pushImage() {
             docker compose push
         '''
     }
+}
+def pushVersionUpdate(){
+   sh '''
+   git config user.name "jenkins"
+   git config user.email "surajbalal786@gmail.com"
+   '''
+
+   sshagent(['github-ssh']){
+    sh '''
+        git push origin HEAD
+        git push origin --tags
+    '''
+   }
 }
 return this

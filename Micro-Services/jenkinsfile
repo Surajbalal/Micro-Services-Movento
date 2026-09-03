@@ -19,6 +19,13 @@ pipeline{
                 }
             }
         }
+        stage('Increment Version'){
+            steps{
+                script{
+                    gv.IncrementVersion()
+                }
+            }
+        }
         stage('Build Image'){
             steps{
                 script {
