@@ -179,7 +179,7 @@ def pushVersionUpdate(){
     git remote set-url origin git@github.com:Surajbalal/Micro-Services-Movento.git
    '''
 
-   sshagent(['git']){
+   sshagent(['github-ssh']){
     sh '''
         git push origin HEAD
         git push origin --tags
