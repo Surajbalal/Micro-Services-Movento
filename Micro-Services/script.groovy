@@ -86,17 +86,18 @@ def incrementVersion(){
 
                 echo "New version for ${service}: ${version}"
                 // withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"])
-                sh '''
+            }
+
+
+        }
+       }
+        sh '''
                     git add Micro-Services/*/package.json
                     git commit -m "chore: bump service version"
                     git status
                     git log -3 --oneline
                 '''
-
-            }
-
-        }
-       }
+       
 }
 def buildImage() {
     withCredentials([
