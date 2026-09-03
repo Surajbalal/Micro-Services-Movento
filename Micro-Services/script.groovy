@@ -18,6 +18,30 @@
     //         '''
     // }
 // }
+def getChangedServices() {
+    def changedFiles = sh(
+        script:'git diff --name-only HEAD~1 HEAD',
+        returnStdout: true
+    ).trim().split('\n')
+
+    def services = [
+        'auth',
+        'user',
+        'captain',
+        'gateway',
+        'ride',
+        'payment',
+        'call-service'
+    ]
+
+    return services.findAll { service -> 
+        changedFiles.any{
+            it.startsWith("Micro-Services/${service}/")
+        }
+    }
+
+
+}
 def test() {
     echo 'Tests temporarily disabled'
 }
@@ -58,10 +82,22 @@ def buildImage() {
         file(credentialsId: 'payment-service.env', variable: 'PAYMENT_ENV_FILE'),
         file(credentialsId: 'call-service.env', variable: 'CALL_ENV_FILE')
     ]) {
-        sh '''
-            cd Micro-Services
-            docker compose build
-        '''
+
+        def changedServices = getChangedServices()
+
+        echo "Changed services ${changedServices}"
+
+        dir('Micro-Services'){
+            changedServices.each{ service -> 
+                echo "Building ${service}"
+                sh docker compose build ${service}
+            }
+
+        }
+        // sh '''
+        //     cd Micro-Services
+        //     docker compose build
+        // '''
     }
 }
 def dockerLogin(){
