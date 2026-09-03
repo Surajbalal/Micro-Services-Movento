@@ -33,7 +33,7 @@ def incrementVersion(){
     dir('Micro-Services'){
         sh '''
             for service in */; do
-                if [ -f "$service/package.json"]; then
+                if [ -f "$service/package.json" ]; then
                     cd "$service"
                     npm version patch
                     cd ..
