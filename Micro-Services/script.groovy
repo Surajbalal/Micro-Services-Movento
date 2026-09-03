@@ -36,6 +36,13 @@ def incrementVersion(){
                 if [ -f "$service/package.json" ]; then
                     cd "$service"
                     npm version patch
+                    def packageJson = readJSON file: 'package.json'
+                    def version = packageJson.version
+
+                    env.IMAGE_VERSION = "${version}-${BUILD_NUMBER}"
+
+                    echo "New version... ${version}"
+                    echo "New image version... ${env.IMAGE_VERSION}"
                     cd ..
                 fi
             done
