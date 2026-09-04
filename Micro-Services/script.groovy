@@ -179,7 +179,7 @@ def pushImage() {
 def pushVersionUpdate(){
    sh '''
    git config user.name "jenkins"
-   git config user.email "surajbalal786@gmail.com"
+   git config user.email "jenkins@example.com"
     git remote set-url origin git@github.com:Surajbalal/Micro-Services-Movento.git
    '''
 
