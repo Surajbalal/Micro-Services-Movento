@@ -85,6 +85,8 @@ def incrementVersion(){
                 def version = packageJson.version
 
                 echo "New version for ${service}: ${version}"
+                sh 'git add package.json'
+                '
                 // withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"])
             }
 
@@ -92,10 +94,9 @@ def incrementVersion(){
         }
        }
         sh '''
-                    git add Micro-Services/*/package.json
+                    // git add Micro-Services/*/package.json
                     git commit -m "chore: bump service version"
-                    git status
-                    git log -3 --oneline
+                   
                 '''
        
 }
@@ -189,7 +190,6 @@ def pushVersionUpdate(){
    sshagent(['github-ssh']){
     sh '''
         git push origin HEAD:${BRANCH_NAME}
-        git push origin --tags
     '''
    }
 }
