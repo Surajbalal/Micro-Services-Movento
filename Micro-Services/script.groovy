@@ -92,11 +92,8 @@ def incrementVersion(){
 
         }
        }
-        sh '''
                     // git add Micro-Services/*/package.json
-                    git commit -m "chore: bump service version"
-                   
-                '''
+        sh 'git commit -m "chore: bump service version"'
        
 }
 def buildImage() {
