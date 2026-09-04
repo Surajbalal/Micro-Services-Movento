@@ -86,7 +86,6 @@ def incrementVersion(){
 
                 echo "New version for ${service}: ${version}"
                 sh 'git add package.json'
-                '
                 // withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"])
             }
 

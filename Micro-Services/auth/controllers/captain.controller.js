@@ -30,7 +30,7 @@ module.exports.registerCaptain = async (req, res, next) => {
     if (existingCaptain.verified) {
       return res.status(400).json({ message: "Captain already exists" });
     }
-    console.log("pipline test:48");
+    console.log("pipline test:49");
 
     // update unverified captain (re-registration)
     captain = await captainService.updateCaptain({
