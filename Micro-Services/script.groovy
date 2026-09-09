@@ -131,7 +131,7 @@ def incrementVersion(){
 
                 def envName = service.toUpperCase().replace('-','_')+'_VERSION'
                 def imageVersion = "${version}-${BUILD_NUMBER}"
-                env[envName] = imageVersion
+                // env[envName] = imageVersion
                 echo "${envName}-${env[envName]}"
 
                 sh """
@@ -162,7 +162,7 @@ def buildImage() {
             changedServices.each{ service -> 
              
                 echo "Building ${service}"
-                sh "docker compose build ${service}"
+                sh "docker compose --env-file deploy.env build ${service}"
             }
 
         }
