@@ -131,7 +131,6 @@ def incrementVersion(){
 
                 def envName = service.toUpperCase().replace('-','_')+'_VERSION'
                 def imageVersion = "${version}-${BUILD_NUMBER}"
-                // env[envName] = imageVersion
                 echo "${envName}-${env[envName]}"
 
                 sh """
