@@ -224,7 +224,7 @@ def pushVersionUpdate(){
 
    sshagent(['github-ssh']){
     sh '''
-        git push origin HEAD
+        git push origin HEAD:main
         git push origin --tags
     '''
    }
