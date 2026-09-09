@@ -19,6 +19,49 @@
     //         '''
     // }
 // }
+def createInitialDeployEnv() {
+
+    def services = [
+        'auth',
+        'user',
+        'captain',
+        'gateway',
+        'ride',
+        'payment',
+        'call-service'
+    ]
+
+    dir('Micro-Services') {
+
+        def deployEnv = ''
+
+        services.each { service ->
+
+            dir(service) {
+
+                def packageJson = readJSON file: 'package.json'
+                def version = packageJson.version
+
+                def envName = service.toUpperCase()
+                    .replace('-', '_') + '_VERSION'
+
+                def imageVersion = "${version}-${BUILD_NUMBER}"
+
+                deployEnv += "${envName}=${imageVersion}\n"
+
+                echo "${service}: ${imageVersion}"
+            }
+        }
+
+        writeFile(
+            file: 'deploy.env',
+            text: deployEnv
+        )
+
+        echo "Created deploy.env:"
+        sh 'cat deploy.env'
+    }
+}
 def getChangedServices() {
     def changedServices = sh(
         script:'git diff --name-only HEAD~1 HEAD',
@@ -80,21 +123,26 @@ def incrementVersion(){
             echo "Incrementing version for ${service}"
 
             dir(service){
-                sh 'npm version patch --no-git-tag-version'
+                sh 'npm version patch'
                 def packageJson = readJSON file : 'package.json'
                 def version = packageJson.version
 
                 echo "New version for ${service}: ${version}"
-                sh 'git add package.json'
-                // withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"])
-            }
 
+                def envName = service.toUpperCase().replace('-','_')+'_VERSION'
+                def imageVersion = "${version}-${BUILD_NUMBER}"
+                env[envName] = imageVersion
+                echo "${envName}-${env[envName]}"
+
+                sh """
+                    cd ..
+                    sed -i "s|^${envName}=.*|${envName}=${imageVersion}|" deploy.env
+                """
+
+            }
 
         }
        }
-                    // git add Micro-Services/*/package.json
-        sh 'git commit -m "chore: bump service version"'
-       
 }
 def buildImage() {
     withCredentials([
@@ -112,13 +160,9 @@ def buildImage() {
 
         dir('Micro-Services'){
             changedServices.each{ service -> 
-
-                def jsonFile = readJSON file : "${service}/package.json"
-                def version = jsonFile.version
+             
                 echo "Building ${service}"
-                withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"]){
-                    sh "docker compose build ${service}"
-                }
+                sh "docker compose build ${service}"
             }
 
         }
@@ -157,14 +201,10 @@ def pushImage() {
         echo "Pushing services: ${changedServices}"
         dir('Micro-Services'){
             changedServices.each{ service ->
-                echo "Pushing ${service}"
-                def packageJson = readJSON file : "${service}/package.json"
-                def version = packageJson.version
-                echo "Building ${service} version ${version}"
-                withEnv(["IMAGE_VERSION=${version}-${BUILD_NUMBER}"]){
+               
 
                 sh "docker compose push ${service}"
-                }
+                
             
         }
 
@@ -179,14 +219,40 @@ def pushImage() {
 def pushVersionUpdate(){
    sh '''
    git config user.name "jenkins"
-   git config user.email "jenkins@example.com"
-    git remote set-url origin git@github.com:Surajbalal/Micro-Services-Movento.git
+   git config user.email "surajbalal786@gmail.com"
    '''
 
    sshagent(['github-ssh']){
     sh '''
-        git push origin HEAD:${BRANCH_NAME}
+        git push origin HEAD
+        git push origin --tags
     '''
    }
+}
+def deployApplication(){
+    def shellCmd = "bash ./server-cmds.sh"
+
+    def ec2Instance = "ubuntu@13.63.12.108"
+ withCredentials([
+        file(credentialsId: 'auth-service.env', variable: 'AUTH_ENV_FILE'),
+        file(credentialsId: 'user-service.env', variable: 'USER_ENV_FILE'),
+        file(credentialsId: 'captain-service.env', variable: 'CAPTAIN_ENV_FILE'),
+        file(credentialsId: 'ride-service.env', variable: 'RIDE_ENV_FILE'),
+        file(credentialsId: 'payment-service.env', variable: 'PAYMENT_ENV_FILE'),
+        file(credentialsId: 'call-service.env', variable: 'CALL_ENV_FILE')
+    ]) {
+    sshagent(['ec2-server-key']){
+        sh "scp server-cmds.sh ${ec2Instance}:/home/ubuntu"
+        sh "scp docker-compose.yml ${ec2Instance}:/home/ubuntu"
+        sh "scp deploy.env ${ec2Instance}:/home/ubuntu"
+        sh "scp \$AUTH_ENV_FILE ${ec2Instance}:/home/ubuntu/auth-service.env"
+        sh "scp \$USER_ENV_FILE ${ec2Instance}:/home/ubuntu/user-service.env"
+        sh "scp \$CAPTAIN_ENV_FILE ${ec2Instance}:/home/ubuntu/captain-service.env"
+        sh "scp \$RIDE_ENV_FILE ${ec2Instance}:/home/ubuntu/ride-service.env"
+        sh "scp \$PAYMENT_ENV_FILE ${ec2Instance}:/home/ubuntu/payment-service.env"
+        sh "scp \$CALL_ENV_FILE ${ec2Instance}:/home/ubuntu/call-service.env"
+        sh "ssh -o strictHostKeyChecking=no ${ec2Instance} ${shellCmd} "
+    }
+    }
 }
 return this

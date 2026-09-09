@@ -7,10 +7,20 @@ pipeline{
         nodejs 'NodeJS'
     }
     stages{
+      
         stage('init'){
             steps{
                 script{
                     gv = load"Micro-Services/script.groovy"
+                }
+            }
+        }
+          stage(initInitialDeployEnv){
+            steps{
+                script{
+                    script{
+                        gv.createInitialDeployEnv()
+                    }
                 }
             }
         }
@@ -63,6 +73,13 @@ pipeline{
             steps{
                 script{
                     gv.pushVersionUpdate()
+                }
+            }
+        }
+        stage('Deploy Application') {
+            steps{
+                script{
+                    gv.deployApplication()
                 }
             }
         }

@@ -1,5 +1,4 @@
 services:
-
   redis:
     image: redis:7-alpine
     ports:
@@ -7,14 +6,9 @@ services:
     networks:
       - backend
 
-
-
-
-
-
   gateway:
     build: ./gateway
-    image: surajbalal/gateway:${IMAGE_VERSION}
+    image: surajbalal/gateway:${GATEWAY_VERSION}
     container_name: gateway
     ports:
       - "80:80"
@@ -33,7 +27,7 @@ services:
 
   auth:
     build: ./auth
-    image: surajbalal/auth:${IMAGE_VERSION}
+    image: surajbalal/auth:${AUTH_VERSION}
     container_name: auth
     ports:
       - "3004:3004"
@@ -46,8 +40,8 @@ services:
 
   user:
     build: ./user
-   
-    image: surajbalal/user:${IMAGE_VERSION}
+
+    image: surajbalal/user:${USER_VERSION}
 
     container_name: user
     ports:
@@ -61,7 +55,7 @@ services:
 
   captain:
     build: ./captain
-    image: surajbalal/captain:${IMAGE_VERSION}
+    image: surajbalal/captain:${CAPTAIN_VERSION}
     container_name: captain
     ports:
       - "3002:3002"
@@ -74,7 +68,7 @@ services:
 
   ride:
     build: ./ride
-    image: surajbalal/ride:${IMAGE_VERSION}
+    image: surajbalal/ride:${RIDE_VERSION}
     container_name: ride
     ports:
       - "3003:3003"
@@ -87,7 +81,7 @@ services:
 
   payment:
     build: ./payment
-    image: surajbalal/payment:${IMAGE_VERSION}
+    image: surajbalal/payment:${PAYMENT_VERSION}
     container_name: payment
     ports:
       - "3006:3006"
@@ -99,7 +93,7 @@ services:
       - backend
   call-service:
     build: ./call-service
-    image: surajbalal/call-service:${IMAGE_VERSION}
+    image: surajbalal/call-service:${CALL_SERVICE_VERSION}
     container_name: call-service
     ports:
       - "3005:3005"
