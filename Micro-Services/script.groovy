@@ -202,7 +202,7 @@ def pushImage() {
             changedServices.each{ service ->
                
 
-                sh "docker compose push ${service}"
+                sh "docker compose --env-file deploy.env push ${service}"
                 
             
         }
