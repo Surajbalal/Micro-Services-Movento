@@ -219,7 +219,7 @@ def pushVersionUpdate(){
    sh '''
    git config user.name "jenkins"
    git config user.email "surajbalal786@gmail.com"
-   git remote set-url origin https://github.com/Surajbalal/Micro-Services-Movento.git
+   git remote set-url origin git@github.com:Surajbalal/Micro-Services-Movento.git
    '''
 
    sshagent(['github-ssh']){
