@@ -15,15 +15,6 @@ pipeline{
                 }
             }
         }
-          stage(initInitialDeployEnv){
-            steps{
-                script{
-                    script{
-                        gv.createInitialDeployEnv()
-                    }
-                }
-            }
-        }
         stage('test'){
             steps{
                 script {
