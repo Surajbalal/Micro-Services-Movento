@@ -223,7 +223,7 @@ def pushVersionUpdate(){
     git add Micro-Services/*/package.json
     git add Micro-Services/*/package-lock.json
     git add Micro-Services/deploy.env
-    
+
 
     git commit -m "chore: update service versions" || true
 
@@ -251,7 +251,7 @@ def deployApplication(){
     ]) {
     sshagent(['ec2-server-key']){
         sh "scp -o StrictHostKeyChecking=no Micro-Services/server-cmds.sh ${ec2Instance}:/home/ubuntu"
-        sh "scp Micro-Services/docker-compose.yml ${ec2Instance}:/home/ubuntu"
+        sh "scp Micro-Services/docker-compose.deploy.yml ${ec2Instance}:/home/ubuntu"
         sh "scp Micro-Services/deploy.env ${ec2Instance}:/home/ubuntu"
         sh "scp \$AUTH_ENV_FILE ${ec2Instance}:/home/ubuntu/auth-service.env"
         sh "scp \$USER_ENV_FILE ${ec2Instance}:/home/ubuntu/user-service.env"
