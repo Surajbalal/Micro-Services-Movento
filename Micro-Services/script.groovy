@@ -219,7 +219,14 @@ def pushVersionUpdate(){
    sh '''
    git config user.name "jenkins"
    git config user.email "surajbalal786@gmail.com"
-   git remote set-url origin git@github.com:Surajbalal/Micro-Services-Movento.git
+
+    git add Micro-Services/*/package.json
+    git add Micro-Services/*/package-lock.json
+    git add Micro-Services/deploy.env
+
+    git commit -m "chore: update service versions" || true
+
+    git remote set-url origin git@github.com:Surajbalal/Micro-Services-Movento.git
    '''
 
    sshagent(['github-ssh']){
