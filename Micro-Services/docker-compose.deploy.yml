@@ -7,7 +7,6 @@ services:
       - backend
 
   gateway:
-    build: ./gateway
     image: surajbalal/gateway:${GATEWAY_VERSION}
     container_name: gateway
     ports:
@@ -26,7 +25,6 @@ services:
       - backend
 
   auth:
-    build: ./auth
     image: surajbalal/auth:${AUTH_VERSION}
     container_name: auth
     ports:
@@ -39,10 +37,7 @@ services:
       - backend
 
   user:
-    build: ./user
-
     image: surajbalal/user:${USER_VERSION}
-
     container_name: user
     ports:
       - "3001:3001"
@@ -54,7 +49,6 @@ services:
       - backend
 
   captain:
-    build: ./captain
     image: surajbalal/captain:${CAPTAIN_VERSION}
     container_name: captain
     ports:
@@ -67,7 +61,6 @@ services:
       - backend
 
   ride:
-    build: ./ride
     image: surajbalal/ride:${RIDE_VERSION}
     container_name: ride
     ports:
@@ -80,7 +73,6 @@ services:
       - backend
 
   payment:
-    build: ./payment
     image: surajbalal/payment:${PAYMENT_VERSION}
     container_name: payment
     ports:
@@ -92,7 +84,6 @@ services:
     networks:
       - backend
   call-service:
-    build: ./call-service
     image: surajbalal/call-service:${CALL_SERVICE_VERSION}
     container_name: call-service
     ports:
