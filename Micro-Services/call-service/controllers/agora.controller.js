@@ -6,6 +6,7 @@ const asyncHandler = require("../utils/asyncHandler");
 exports.generateToken = asyncHandler(async (req, res, next) => {
   const { channelName, uid } = req.body;
   console.log("channelName: ", channelName);
+    console.log("pipeline test:79");
   console.log("uid: ", uid);
 
   if (!channelName) {
