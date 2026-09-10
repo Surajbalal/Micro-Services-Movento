@@ -242,7 +242,7 @@ def deployApplication(){
         file(credentialsId: 'call-service.env', variable: 'CALL_ENV_FILE')
     ]) {
     sshagent(['ec2-server-key']){
-        sh "scp Micro-Services/server-cmds.sh ${ec2Instance}:/home/ubuntu"
+        sh "scp -o StrictHostKeyChecking=no Micro-Services/server-cmds.sh ${ec2Instance}:/home/ubuntu"
         sh "scp Micro-Services/docker-compose.yml ${ec2Instance}:/home/ubuntu"
         sh "scp Micro-Services/deploy.env ${ec2Instance}:/home/ubuntu"
         sh "scp \$AUTH_ENV_FILE ${ec2Instance}:/home/ubuntu/auth-service.env"
