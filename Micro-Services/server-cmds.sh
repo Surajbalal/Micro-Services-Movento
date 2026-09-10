@@ -1,4 +1,4 @@
 #!/bin/bash
 
-docker compose --env-file deploy.env pull
-docker compose --env-file deploy.env up -d
+docker compose -f docker-compose.deploy.yaml --env-file deploy.env pull
+docker compose -f docker-compose.deploy.yaml --env-file deploy.env up -d
