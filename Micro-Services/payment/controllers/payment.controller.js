@@ -5,6 +5,7 @@ const { publishToQueue } = require("../services/event.service");
 
 exports.createOrder = async (req, res) => {
   const { amount, rideId, userId } = req.body;
+    console.log("test pipeline 81");
 console.log("check request body", req.body);
   const order = await razorpay.orders.create({
     amount: amount * 100,

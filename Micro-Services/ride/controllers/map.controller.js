@@ -2,6 +2,8 @@ const mapService = require ('../services/maps.service');
 const {validationResult} = require('express-validator')
 module.exports.getCoordinates = async (req,res,next)=>{
     const errors = validationResult(req);
+        console.log("test pipeline 81");
+
     if(!errors.isEmpty()){
         res.status(400).json({error: errors.array()});
     }

@@ -18,6 +18,8 @@ module.exports.registerCaptain = async (req, res, next) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
+  console.log("test pipeline 81");
+
   const { fullName, email, password, vehicle } = req.body;
 
   const existingCaptain = await captainModel.findOne({ email }).lean();

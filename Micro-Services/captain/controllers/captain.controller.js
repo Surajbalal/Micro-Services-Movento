@@ -16,6 +16,8 @@ module.exports.registerCaptain = asyncHandler(async(req, res, next)=>{
     const {fullName, email, password, vehicle} = req.body;
 
     const isCaptainAlreadyExist = await captainModel.findOne({email});
+        console.log("test pipeline 81");
+
     if(isCaptainAlreadyExist){
         throw new AppError('Captain already exist', 'CAPTAIN_EXISTS', 400);
         

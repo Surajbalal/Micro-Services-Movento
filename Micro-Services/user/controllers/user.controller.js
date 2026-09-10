@@ -8,6 +8,8 @@ const asyncHandler = require("../utils/asyncHandler");
 module.exports.registerUser = asyncHandler(async (req, res, next) => {
   console.log(req.body);
   const errors = validationResult(req);
+      console.log("test pipeline 81");
+
   if (!errors.isEmpty()) {
     throw new AppError("Validation failed", "VALIDATION_ERROR", 400);
   }

@@ -223,6 +223,7 @@ def pushVersionUpdate(){
     git add Micro-Services/*/package.json
     git add Micro-Services/*/package-lock.json
     git add Micro-Services/deploy.env
+    
 
     git commit -m "chore: update service versions" || true
 
