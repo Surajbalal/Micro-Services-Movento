@@ -221,7 +221,7 @@ def pushVersionUpdate(){
    git config user.email "surajbalal786@gmail.com"
 
     git add Micro-Services/*/package.json
-    git add Micro-Services/*/package-lock.json
+    git add Micro-Services/*/pnpm-lock.yaml
     git add Micro-Services/deploy.env
 
 
