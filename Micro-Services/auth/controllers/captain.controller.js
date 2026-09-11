@@ -18,7 +18,7 @@ module.exports.registerCaptain = async (req, res, next) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  console.log("test pipeline 87");
+  console.log("test pipeline 105");
 
   const { fullName, email, password, vehicle } = req.body;
 
